@@ -39,7 +39,7 @@ ui <- bootstrapPage(
         ),
         selectInput(
             "city", "Select the City Name:",
-            append("None", as.list(cities$location))
+            append("All", as.list(cities$location))
         )
     )
 )
@@ -65,7 +65,7 @@ server <- function(input, output, session) {
             } else {
                 flow_name == input$flow_name
             }) %>%
-            dplyr::filter(if (input$city == "None") {
+            dplyr::filter(if (input$city == "All") {
                 location != ""
             } else {
                 location == input$city

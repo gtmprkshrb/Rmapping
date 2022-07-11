@@ -41,7 +41,7 @@ ui <- bootstrapPage(
         ),
         selectInput(
             "city", "Select the City Name:",
-            append("None", as.list(cities$location))
+            append("All", as.list(cities$location))
         )
     )
 )
@@ -67,20 +67,14 @@ server <- function(input, output, session) {
             } else {
                 flow_name == input$flow_name
             }) %>%
-            dplyr::filter(if (input$city == "None") {
+            dplyr::filter(if (input$city == "All") {
                 location != ""
             } else {
                 location == input$city
             })
         leaflet(filtered_data) %>%
             addTiles() %>%
-            addHeatmap(
-                lng = ~long,
-                lat = ~lat,
-                intensity = 20,
-                max = 100,
-                radius = 20,
-                blur = 10) %>%
+            addHeatmap(lng = ~long, lat = ~lat, intensity = 20, max = 100, radius = 20, blur = 10) %>%
             addAwesomeMarkers(
                 lat = ~lat, lng = ~long,
                 icon = ~ logos[flow_name],
