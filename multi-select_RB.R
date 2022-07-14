@@ -21,9 +21,12 @@ tb <- bq_dataset_query(ds,
     billing = "tides-saas-309509"
 )
 bqdata <- bq_table_download(tb)
+# List of distinct Taluka Names
 KGISTalukName <- bqdata %>%
     select(KGISTalukName) %>%
     distinct()
+
+# List of distinct Village Names
 KGISVillageName <- bqdata %>%
     select(KGISVillageName) %>%
     distinct()
@@ -36,7 +39,17 @@ ui <- bootstrapPage(
         top = 10, right = 10, draggable = TRUE,
         selectInput(
             "KGISVillageName", "Select the Village Name:",
+            # Appending ALL to have a option to load all locations
             append("All", as.list(KGISVillageName$KGISVillageName), ),
+            # selecting ALL as default option
+            selected = "All",
+            multiple = TRUE
+        ),
+        selectInput(
+            "KGISTalukName", "Select the Taluk Name:",
+            # Appending ALL to have a option to load all locations
+            append("All", as.list(KGISTalukName$KGISTalukName), ),
+            # selecting ALL as default option
             selected = "All",
             multiple = TRUE
         )
@@ -51,10 +64,26 @@ server <- function(input, output, session) {
                 } else {
                     KGISVillageName %in% input$KGISVillageName
                 }
+            ) %>%
+            dplyr::filter(
+                if ("All" %in% input$KGISTalukName) {
+                    KGISTalukName != ""
+                } else {
+                    KGISTalukName %in% input$KGISTalukName
+                }
             )
         leaflet(filtered_data) %>%
+            # Setting default view to India
+            setView(78.9629, 20.5937, zoom = 5) %>%
             addTiles() %>%
-            addHeatmap(lng = ~Longitude, lat = ~Latitude, intensity = 20, max = 100, radius = 20, blur = 10) %>%
+            addHeatmap(
+                lng = ~Longitude,
+                lat = ~Latitude,
+                intensity = 20,
+                max = 100,
+                radius = 20,
+                blur = 10
+            ) %>%
             addAwesomeMarkers(
                 lat = ~Latitude, lng = ~Longitude,
                 clusterOptions = markerClusterOptions()
