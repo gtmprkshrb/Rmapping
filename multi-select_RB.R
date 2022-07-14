@@ -86,6 +86,30 @@ server <- function(input, output, session) {
             ) %>%
             addAwesomeMarkers(
                 lat = ~Latitude, lng = ~Longitude,
+                popup = paste0(
+                    "<p> <b>District Name: </b>",
+                    filtered_data$KGISDistrictName,
+                    "</p>",
+                    "<p> <b>Village Name: </b>",
+                    filtered_data$KGISVillageName,
+                    "</p>",
+                    "<p> <b>Anganawadi Name: </b>",
+                    filtered_data$AnganawadiName,
+                    "</p>",
+                    "<p> <b>Village Code: </b>",
+                    filtered_data$KGISVillageCode,
+                    "</p>",
+                    "<p> <b>Type: </b>", filtered_data$Type, "</p>",
+                    "<p> <b>Pincode: </b>", filtered_data$Pincode, "</p>",
+                    "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
+                    "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
+                    "<p> <b>Anganawadi Worker Name: </b>",
+                    filtered_data$AWWorkerName,
+                    "</p>",
+                    "<p> <b>Anganawadi Worker Phone: </b>",
+                    filtered_data$AWWorkerPhone,
+                    "</p>"
+                ),
                 clusterOptions = markerClusterOptions()
             )
     })
