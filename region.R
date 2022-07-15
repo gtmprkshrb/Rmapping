@@ -4,7 +4,7 @@ library(ggmap)
 library(shinydashboard)
 library(leaflet)
 
-key <- "AIzaSyD5dFf1fbDeRK_TRP4gEsHiwVM5uiB1M7k"
+key <- "mykey"
 
 ui<- shinydashboard::dashboardPage(
   dashboardHeader(title = "GeoLocation Search"),
