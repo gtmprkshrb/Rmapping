@@ -6,6 +6,6 @@ library(tidyverse)
 library(leaflet)
 
 
-register_google(key = "AIzaSyD5dFf1fbDeRK_TRP4gEsHiwVM5uiB1M7k")
+register_google(key = "my_key")
 
-geocode("Pratapgarh") %>% leaflet() %>% addTiles() %>% addMarkers()
+geocode("dharwad") %>% leaflet() %>% addTiles() %>% addMarkers()
