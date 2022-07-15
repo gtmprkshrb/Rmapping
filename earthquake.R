@@ -7,8 +7,6 @@ library(rgdal)
 library(sp)
 library(raster)
 
-#download.file("http://thematicmapping.org/downloads/TM_WORLD_BORDERS_SIMPL-0.3.zip" , destfile="world_shape_file.zip")
-#unzip("world_shape_file.zip")
 world_spdf = readOGR(dsn=getwd(), layer="TM_WORLD_BORDERS_SIMPL-0.3")
 world_spdf$POP2005 = as.numeric(as.character(world_spdf$POP2005)) / 1000000 %>% round(2)
 
