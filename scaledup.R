@@ -128,6 +128,11 @@ server <- function(input, output, session) {
                 icon = ~ logos[Category],
                 popup = paste0(
                     "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+                    "<img src = ", filtered_data$Image,
+                    ' width="100%"  height="100"', ">",
+                    "<p> <b>Category: </b>",
+                    filtered_data$Category,
+                    "</p>",
                     "<p> <b>Description: </b>",
                     filtered_data$Description,
                     "</p>",
