@@ -12,7 +12,7 @@ library(magrittr)
 library(ggmap)
 library(mapview)
 
-key <- "key"
+key <- "my_key"
 set_key(key = key)
 register_google(key = key)
 
