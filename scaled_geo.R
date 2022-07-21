@@ -6,9 +6,6 @@ library(shiny)
 library(bigrquery)
 library(fontawesome)
 library(leaflet.extras)
-library(magrittr)
-library(tidyverse)
-library(readxl)
 library(leaflet.providers)
 library(raster)
 
@@ -90,7 +87,7 @@ logos <- awesomeIconList(
         library = "fa"
     )
 )
-IND <- getData("GADM", country = "IND", level = 2)
+IND <- getData("GADM", country = "IND", level = 3)
 
 server <- function(input, output, session) {
     output$mymap <- renderLeaflet({
