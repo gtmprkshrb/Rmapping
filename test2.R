@@ -11,7 +11,7 @@ library(leaflet.extras)
 library(magrittr)
 library(ggmap)
 
-key <- "AIzaSyD5dFf1fbDeRK_TRP4gEsHiwVM5uiB1M7k"
+key <- "my_key"
 set_key(key = key)
 register_google(key = key)
 

@@ -5,7 +5,7 @@ library(shinydashboard)
 library(leaflet)
 
 key <- "my_key"
-register_google(key = "AIzaSyD5dFf1fbDeRK_TRP4gEsHiwVM5uiB1M7k")
+register_google(key = "my_key")
 
 
 ui <- dashboardPage(
