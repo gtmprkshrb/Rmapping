@@ -10,6 +10,7 @@ library(fontawesome)
 library(leaflet.extras)
 library(magrittr)
 library(ggmap)
+library(mapview)
 
 key <- "AIzaSyD5dFf1fbDeRK_TRP4gEsHiwVM5uiB1M7k"
 set_key(key = key)
@@ -87,7 +88,9 @@ ui <- dashboardPage(
         tabName = "maps",
         icon = icon("globe"),
         menuSubItem("Filter", tabName = "filter", icon = icon("map")),
-        menuSubItem("Google Search", tabName = "search2", icon = icon("map"))
+        menuSubItem("heatmap", tabName = "Heatmap", icon = icon("map")),
+        menuSubItem("clustering", tabName = "Clustering", icon = icon("map")),
+        menuSubItem("layer", tabName = "Layer", icon = icon("map"))
       ),
       menuItem(
         tabName = "geoSearch",
@@ -127,6 +130,18 @@ ui <- dashboardPage(
       tabItem(
         tabName = "geoSearch",
         geosearch1
+      ),
+      tabItem(
+        tabName = "Heatmap",
+        leafletOutput('heatmap_data', height = 500, width = "210%")
+      ),
+      tabItem(
+        tabName = "Clustering",
+        leafletOutput('cluster_data', height = 500, width = "210%")
+      ),
+      tabItem(
+        tabName = "Layer",
+        leafletOutput('layer_data', height = 700, width = "100%")
       )
     )
   )
@@ -134,24 +149,125 @@ ui <- dashboardPage(
 
 
 
+
+
+
+
+
 server <- function(input, output) {
   
-  my_address <- reactive({
-    if(!is.null(input$jsValueAddressNumber)){
-      if(length(grep(pattern = input$jsValueAddressNumber, x = input$jsValuePretty ))==0){
-        final_address<- c(input$jsValueAddressNumber, input$jsValuePretty)
-      } else{
-        final_address<- input$jsValuePretty
-      }
-      final_address
-    }
+  output$tabContentUI <- renderLeaflet({
+    geocode(input$address) %>% leaflet() %>% setView(78.9629, 20.5937, zoom = 5) %>% addTiles() %>% addMarkers()
   })
   
-  output$tabContentUI <- renderLeaflet({
-    geocode(input$address) %>% leaflet() %>% addTiles() %>% addMarkers()
+  output$layer_data <- renderLeaflet({
+    leaflet(data = bqdata) %>% addTiles(group = "OpenStreetMap") %>% setView(78.9629, 20.5937, zoom = 4) %>%
+      
+      addProviderTiles(providers$Esri.WorldStreetMap, options = tileOptions(minZoom=0, maxZoom=13), group = "Esri.WorldStreetMap") %>%
+      
+      addProviderTiles(providers$Esri.WorldImagery, options=tileOptions(minZoom=0, maxZoom=13), group = "Esri.WorldImagery") %>%
+      
+      addAwesomeMarkers(group = "Markers", 
+                        lat = ~Latitude, lng = ~Longitude,
+                        popup = paste0(
+                          "<p> <b>District Name: </b>",
+                          bqdata$KGISDistrictName,
+                          "</p>",
+                          "<p> <b>Village Name: </b>",
+                          bqdata$KGISVillageName,
+                          "</p>",
+                          "<p> <b>Anganawadi Name: </b>",
+                          bqdata$AnganawadiName,
+                          "</p>",
+                          "<p> <b>Village Code: </b>",
+                          bqdata$KGISVillageCode,
+                          "</p>",
+                          "<p> <b>Type: </b>", bqdata$Type, "</p>",
+                          "<p> <b>Pincode: </b>", bqdata$Pincode, "</p>",
+                          "<p> <b>Longitude: </b>", bqdata$Longitude, "</p>",
+                          "<p> <b>Latitude: </b>", bqdata$Latitude, "</p>",
+                          "<p> <b>Anganawadi Worker Name: </b>",
+                          bqdata$AWWorkerName,
+                          "</p>",
+                          "<p> <b>Anganawadi Worker Phone: </b>",
+                          bqdata$AWWorkerPhone,
+                          "</p>"
+                        ),
+                        clusterOptions = markerClusterOptions()
+      ) %>%
+      
+      addHeatmap(lng = ~Longitude,
+                 lat = ~Latitude,
+                 intensity = 20,
+                 max = 100,
+                 radius = 20,
+                 blur = 20, group = "HeatMap") %>%  addSearchGoogle() %>%
+      
+      
+      
+      
+      
+      addLayersControl(
+        baseGroups = c("OpenStreetMap", "Esri.WorldStreetMap", "Esri.WorldImagery"),
+        overlayGroups = c("Markers", "HeatMap"),
+        options = layersControlOptions(collapsed=TRUE)
+      )
+    
+  })
+  
+  output$cluster_data <- renderLeaflet({
+    leaflet(bqdata) %>%
+      # Setting default view to India
+      setView(78.9629, 20.5937, zoom = 4) %>%
+      addTiles() %>%
+      addAwesomeMarkers(
+        lat = ~Latitude, lng = ~Longitude,
+        popup = paste0(
+          "<p> <b>District Name: </b>",
+          bqdata$KGISDistrictName,
+          "</p>",
+          "<p> <b>Village Name: </b>",
+          bqdata$KGISVillageName,
+          "</p>",
+          "<p> <b>Anganawadi Name: </b>",
+          bqdata$AnganawadiName,
+          "</p>",
+          "<p> <b>Village Code: </b>",
+          bqdata$KGISVillageCode,
+          "</p>",
+          "<p> <b>Type: </b>", bqdata$Type, "</p>",
+          "<p> <b>Pincode: </b>", bqdata$Pincode, "</p>",
+          "<p> <b>Longitude: </b>", bqdata$Longitude, "</p>",
+          "<p> <b>Latitude: </b>", bqdata$Latitude, "</p>",
+          "<p> <b>Anganawadi Worker Name: </b>",
+          bqdata$AWWorkerName,
+          "</p>",
+          "<p> <b>Anganawadi Worker Phone: </b>",
+          bqdata$AWWorkerPhone,
+          "</p>"
+        ),
+        clusterOptions = markerClusterOptions()
+      )
+  })
+  
+  
+  output$heatmap_data <- renderLeaflet({
+    leaflet(bqdata) %>%
+      # Setting default view to India
+      setView(78.9629, 20.5937, zoom = 4) %>%
+      addTiles() %>%
+      addHeatmap(
+        lng = ~Longitude,
+        lat = ~Latitude,
+        intensity = 20,
+        max = 100,
+        radius = 20,
+        blur = 20
+      )
   })
   
   output$mymap <- renderLeaflet({
+    
     filtered_data <- bqdata %>%
       dplyr::filter(
         if ("All" %in% input$KGISVillageName) {
@@ -167,6 +283,7 @@ server <- function(input, output) {
           KGISTalukName %in% input$KGISTalukName
         }
       )
+    
     leaflet(filtered_data) %>%
       # Setting default view to India
       setView(78.9629, 20.5937, zoom = 4) %>%
@@ -179,6 +296,7 @@ server <- function(input, output) {
         radius = 20,
         blur = 10
       ) %>%
+      addSearchGoogle()%>%
       addAwesomeMarkers(
         lat = ~Latitude, lng = ~Longitude,
         popup = paste0(

@@ -135,20 +135,9 @@ ui <- dashboardPage(
 
 
 server <- function(input, output) {
-  
-  my_address <- reactive({
-    if(!is.null(input$jsValueAddressNumber)){
-      if(length(grep(pattern = input$jsValueAddressNumber, x = input$jsValuePretty ))==0){
-        final_address<- c(input$jsValueAddressNumber, input$jsValuePretty)
-      } else{
-        final_address<- input$jsValuePretty
-      }
-      final_address
-    }
-  })
-  
+
   output$tabContentUI <- renderLeaflet({
-    geocode(input$address) %>% leaflet() %>% addTiles() %>% addMarkers()
+    geocode(input$address) %>% leaflet() %>% setView(78.9629, 20.5937, zoom = 5) %>% addTiles() %>% addMarkers()
   })
   
   output$mymap <- renderLeaflet({
