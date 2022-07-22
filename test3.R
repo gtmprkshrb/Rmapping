@@ -13,7 +13,7 @@ library(ggmap)
 library(raster)
 library(mapview)
 
-key <- "my_key"
+key <- "AIzaSyD5dFf1fbDeRK_TRP4gEsHiwVM5uiB1M7k"
 set_key(key = key)
 register_google(key = key)
 
@@ -23,7 +23,7 @@ con <- dbConnect(
   dataset = "917302307943",
   billing = "tides-saas-309509"
 )
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 100"
+sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 500"
 ds <- bq_dataset("tides-saas-309509", "cleanscale")
 tb <- bq_dataset_query(ds,
                        query = sql,
@@ -221,6 +221,21 @@ server <- function(input, output) {
       addProviderTiles(providers$Esri.WorldStreetMap, options = tileOptions(minZoom=0, maxZoom=13), group = "Esri.WorldStreetMap") %>%
       addProviderTiles(providers$Esri.WorldImagery, options=tileOptions(minZoom=0, maxZoom=13), group = "Esri.WorldImagery") %>%
       
+      addPolygons(
+        weight = 1,
+        group = "geoboundary",
+        stroke = TRUE,
+        color = "transparent",
+        fillOpacity = 0.7,
+        dashArray = "3",
+        highlight = highlightOptions(
+          weight = 2,
+          dashArray = "",
+          color = "red",
+          bringToFront = TRUE
+        )
+      ) %>%
+      
       addAwesomeMarkers(group = "Markers", 
                         lat = ~Latitude, lng = ~Longitude,
                         popup = paste0(
@@ -272,7 +287,7 @@ server <- function(input, output) {
       
       addLayersControl(
         baseGroups = c("OpenStreetMap", "Esri.WorldStreetMap", "Esri.WorldImagery"),
-        overlayGroups = c("Markers", "HeatMap"),
+        overlayGroups = c("Markers", "HeatMap", "geoboundary"),
         options = layersControlOptions(collapsed=TRUE)
       )
     
