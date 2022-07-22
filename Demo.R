@@ -146,6 +146,24 @@ two <- bootstrapPage(
   )
 )
 
+logos <- awesomeIconList(
+  "Pothole" = makeAwesomeIcon(
+    icon = "road",
+    markerColor = "white",
+    library = "fa"
+  ),
+  "Garbage Collection" = makeAwesomeIcon(
+    icon = "trash",
+    markerColor = "green",
+    library = "fa"
+  ),
+  "Air Quality" = makeAwesomeIcon(
+    icon = "cloud",
+    markerColor = "blue",
+    library = "fa"
+  )
+)
+
 ui <- dashboardPage(
   dashboardHeader(title = "GeoLocation"),
   dashboardSidebar(
@@ -238,6 +256,7 @@ server <- function(input, output) {
       
       addAwesomeMarkers(group = "Markers", 
                         lat = ~Latitude, lng = ~Longitude,
+                        icon = ~ logos[Category],
                         popup = paste0(
                           "<p> <b>Heading: </b>", IND@data$Heading, "</p>",
                           "<img src = ", IND@data$Image,
