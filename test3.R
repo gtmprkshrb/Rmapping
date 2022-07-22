@@ -10,9 +10,10 @@ library(fontawesome)
 library(leaflet.extras)
 library(magrittr)
 library(ggmap)
+library(raster)
 library(mapview)
 
-key <- "my_key"
+key <- "AIzaSyD5dFf1fbDeRK_TRP4gEsHiwVM5uiB1M7k"
 set_key(key = key)
 register_google(key = key)
 
@@ -22,21 +23,25 @@ con <- dbConnect(
   dataset = "917302307943",
   billing = "tides-saas-309509"
 )
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.audit`"
-ds <- bq_dataset("tides-saas-309509", "audit")
+sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 100"
+ds <- bq_dataset("tides-saas-309509", "cleanscale")
 tb <- bq_dataset_query(ds,
                        query = sql,
                        billing = "tides-saas-309509"
 )
 bqdata <- bq_table_download(tb)
-# List of distinct Taluka Names
-KGISTalukName <- bqdata %>%
-  select(KGISTalukName) %>%
+State <- bqdata %>%
+  select(State) %>%
   distinct()
 
-# List of distinct Village Names
-KGISVillageName <- bqdata %>%
-  select(KGISVillageName) %>%
+# List of distinct District Names
+District <- bqdata %>%
+  select(District) %>%
+  distinct()
+
+# List of distinct Category Names
+Category <- bqdata %>%
+  select(Category) %>%
   distinct()
 
 
@@ -79,6 +84,68 @@ geosearch1 <- basicPage(
   ,leafletOutput('tabContentUI', height = 700, width = "100%")
 )
 
+one <- bootstrapPage(
+  absolutePanel(
+    style = "background: #dddddd; padding: 10px",
+    leafletOutput("mymap", height = 400, width = "210%"),
+    selectInput(
+      "District", "Select the District Name:",
+      # Appending ALL to have a option to load all locations
+      append("All", as.list(District$District), ),
+      # selecting ALL as default option
+      selected = "All",
+      multiple = TRUE
+    ),
+    selectInput(
+      "State", "Select the State Name:",
+      # Appending ALL to have a option to load all locations
+      append("All", as.list(State$State), ),
+      # selecting ALL as default option
+      selected = "All",
+      multiple = TRUE
+    ),
+    selectInput(
+      "Category", "Select the Category Name:",
+      # Appending ALL to have a option to load all locations
+      append("All", as.list(Category$Category), ),
+      # selecting ALL as default option
+      selected = "All",
+      multiple = TRUE
+    )
+  )
+)
+
+two <- bootstrapPage(
+  absolutePanel(
+    style = "background: #dddddd; padding: 10px",
+    leafletOutput("layer_data", height = 400, width = "210%"),
+    selectInput(
+      "District", "Select the District Name:",
+      # Appending ALL to have a option to load all locations
+      append("All", as.list(District$District), ),
+      # selecting ALL as default option
+      selected = "All",
+      multiple = TRUE
+    ),
+    selectInput(
+      "State", "Select the State Name:",
+      # Appending ALL to have a option to load all locations
+      append("All", as.list(State$State), ),
+      # selecting ALL as default option
+      selected = "All",
+      multiple = TRUE
+    ),
+    selectInput(
+      "Category", "Select the Category Name:",
+      # Appending ALL to have a option to load all locations
+      append("All", as.list(Category$Category), ),
+      # selecting ALL as default option
+      selected = "All",
+      multiple = TRUE
+    )
+  )
+)
+
 ui <- dashboardPage(
   dashboardHeader(title = "GeoLocation"),
   dashboardSidebar(
@@ -88,8 +155,6 @@ ui <- dashboardPage(
         tabName = "maps",
         icon = icon("globe"),
         menuSubItem("Filter", tabName = "filter", icon = icon("map")),
-        menuSubItem("heatmap", tabName = "Heatmap", icon = icon("map")),
-        menuSubItem("clustering", tabName = "Clustering", icon = icon("map")),
         menuSubItem("layer", tabName = "Layer", icon = icon("map"))
       ),
       menuItem(
@@ -103,54 +168,19 @@ ui <- dashboardPage(
     tabItems(
       tabItem(
         tabName = "filter",
-        bootstrapPage(
-          absolutePanel(
-            style = "background: #dddddd; padding: 10px",
-            leafletOutput("mymap", height = 500, width = "210%"),
-            draggable = TRUE,
-            selectInput(
-              "KGISVillageName", "Select the Village Name:",
-              # Appending ALL to have a option to load all locations
-              append("All", as.list(KGISVillageName$KGISVillageName), ),
-              # selecting ALL as default option
-              selected = "All",
-              multiple = TRUE
-            ),
-            selectInput(
-              "KGISTalukName", "Select the Taluk Name:",
-              # Appending ALL to have a option to load all locations
-              append("All", as.list(KGISTalukName$KGISTalukName), ),
-              # selecting ALL as default option
-              selected = "All",
-              multiple = TRUE
-            )
-          )
-        )
+        one
       ),
       tabItem(
         tabName = "geoSearch",
         geosearch1
       ),
       tabItem(
-        tabName = "Heatmap",
-        leafletOutput('heatmap_data', height = 500, width = "210%")
-      ),
-      tabItem(
-        tabName = "Clustering",
-        leafletOutput('cluster_data', height = 500, width = "210%")
-      ),
-      tabItem(
         tabName = "Layer",
-        leafletOutput('layer_data', height = 700, width = "100%")
+        two
       )
     )
   )
 )
-
-
-
-
-
 
 
 
@@ -161,36 +191,72 @@ server <- function(input, output) {
   })
   
   output$layer_data <- renderLeaflet({
-    leaflet(data = bqdata) %>% addTiles(group = "OpenStreetMap") %>% setView(78.9629, 20.5937, zoom = 4) %>%
+    filtered_data <- bqdata %>%
+      dplyr::filter(
+        if ("All" %in% input$District) {
+          District != ""
+        } else {
+          District %in% input$District
+        }
+      ) %>%
+      dplyr::filter(
+        if ("All" %in% input$State) {
+          State != ""
+        } else {
+          State %in% input$State
+        }
+      ) %>%
+      dplyr::filter(
+        if ("All" %in% input$Category) {
+          Category != ""
+        } else {
+          Category %in% input$Category
+        }
+      )
+    
+    IND@data <- filtered_data
+    
+    leaflet(IND) %>%  addTiles(group = "OpenStreetMap") %>% setView(78.9629, 20.5937, zoom = 4) %>%
       
       addProviderTiles(providers$Esri.WorldStreetMap, options = tileOptions(minZoom=0, maxZoom=13), group = "Esri.WorldStreetMap") %>%
-      
       addProviderTiles(providers$Esri.WorldImagery, options=tileOptions(minZoom=0, maxZoom=13), group = "Esri.WorldImagery") %>%
       
       addAwesomeMarkers(group = "Markers", 
                         lat = ~Latitude, lng = ~Longitude,
                         popup = paste0(
+                          "<p> <b>Heading: </b>", IND@data$Heading, "</p>",
+                          "<img src = ", IND@data$Image,
+                          ' width="100%"  height="100"', ">",
+                          "<p> <b>Category: </b>",
+                          IND@data$Category,
+                          "</p>",
+                          "<p> <b>Description: </b>",
+                          IND@data$Description,
+                          "</p>",
+                          "<p> <b>State Name: </b>",
+                          IND@data$State,
+                          "</p>",
                           "<p> <b>District Name: </b>",
-                          bqdata$KGISDistrictName,
+                          IND@data$District,
+                          "</p>",
+                          "<p> <b>Address: </b>",
+                          IND@data$Address,
+                          "</p>",
+                          "<p> <b>Pincode: </b>",
+                          IND@data$Pincode,
                           "</p>",
                           "<p> <b>Village Name: </b>",
-                          bqdata$KGISVillageName,
+                          IND@data$VillageName,
                           "</p>",
-                          "<p> <b>Anganawadi Name: </b>",
-                          bqdata$AnganawadiName,
+                          "<p> <b>Village ID: </b>", IND@data$VillageID, "</p>",
+                          "<p> <b>WardName: </b>", IND@data$WardName, "</p>",
+                          "<p> <b>Longitude: </b>", IND@data$Longitude, "</p>",
+                          "<p> <b>Latitude: </b>", IND@data$Latitude, "</p>",
+                          "<p> <b>Ward Number: </b>",
+                          IND@data$WardNumber,
                           "</p>",
-                          "<p> <b>Village Code: </b>",
-                          bqdata$KGISVillageCode,
-                          "</p>",
-                          "<p> <b>Type: </b>", bqdata$Type, "</p>",
-                          "<p> <b>Pincode: </b>", bqdata$Pincode, "</p>",
-                          "<p> <b>Longitude: </b>", bqdata$Longitude, "</p>",
-                          "<p> <b>Latitude: </b>", bqdata$Latitude, "</p>",
-                          "<p> <b>Anganawadi Worker Name: </b>",
-                          bqdata$AWWorkerName,
-                          "</p>",
-                          "<p> <b>Anganawadi Worker Phone: </b>",
-                          bqdata$AWWorkerPhone,
+                          "<p> <b>Taluk Name: </b>",
+                          IND@data$TalukName,
                           "</p>"
                         ),
                         clusterOptions = markerClusterOptions()
@@ -204,9 +270,6 @@ server <- function(input, output) {
                  blur = 20, group = "HeatMap") %>%  addSearchGoogle() %>%
       
       
-      
-      
-      
       addLayersControl(
         baseGroups = c("OpenStreetMap", "Esri.WorldStreetMap", "Esri.WorldImagery"),
         overlayGroups = c("Markers", "HeatMap"),
@@ -215,78 +278,48 @@ server <- function(input, output) {
     
   })
   
-  output$cluster_data <- renderLeaflet({
-    leaflet(bqdata) %>%
-      # Setting default view to India
-      setView(78.9629, 20.5937, zoom = 4) %>%
-      addTiles() %>%
-      addAwesomeMarkers(
-        lat = ~Latitude, lng = ~Longitude,
-        popup = paste0(
-          "<p> <b>District Name: </b>",
-          bqdata$KGISDistrictName,
-          "</p>",
-          "<p> <b>Village Name: </b>",
-          bqdata$KGISVillageName,
-          "</p>",
-          "<p> <b>Anganawadi Name: </b>",
-          bqdata$AnganawadiName,
-          "</p>",
-          "<p> <b>Village Code: </b>",
-          bqdata$KGISVillageCode,
-          "</p>",
-          "<p> <b>Type: </b>", bqdata$Type, "</p>",
-          "<p> <b>Pincode: </b>", bqdata$Pincode, "</p>",
-          "<p> <b>Longitude: </b>", bqdata$Longitude, "</p>",
-          "<p> <b>Latitude: </b>", bqdata$Latitude, "</p>",
-          "<p> <b>Anganawadi Worker Name: </b>",
-          bqdata$AWWorkerName,
-          "</p>",
-          "<p> <b>Anganawadi Worker Phone: </b>",
-          bqdata$AWWorkerPhone,
-          "</p>"
-        ),
-        clusterOptions = markerClusterOptions()
-      )
-  })
-  
-  
-  output$heatmap_data <- renderLeaflet({
-    leaflet(bqdata) %>%
-      # Setting default view to India
-      setView(78.9629, 20.5937, zoom = 4) %>%
-      addTiles() %>%
-      addHeatmap(
-        lng = ~Longitude,
-        lat = ~Latitude,
-        intensity = 20,
-        max = 100,
-        radius = 20,
-        blur = 20
-      )
-  })
-  
   output$mymap <- renderLeaflet({
-    
     filtered_data <- bqdata %>%
       dplyr::filter(
-        if ("All" %in% input$KGISVillageName) {
-          KGISVillageName != ""
+        if ("All" %in% input$District) {
+          District != ""
         } else {
-          KGISVillageName %in% input$KGISVillageName
+          District %in% input$District
         }
       ) %>%
       dplyr::filter(
-        if ("All" %in% input$KGISTalukName) {
-          KGISTalukName != ""
+        if ("All" %in% input$State) {
+          State != ""
         } else {
-          KGISTalukName %in% input$KGISTalukName
+          State %in% input$State
+        }
+      ) %>%
+      dplyr::filter(
+        if ("All" %in% input$Category) {
+          Category != ""
+        } else {
+          Category %in% input$Category
         }
       )
     
-    leaflet(filtered_data) %>%
+    IND@data <- filtered_data
+    leaflet(IND) %>%
       # Setting default view to India
-      setView(78.9629, 20.5937, zoom = 4) %>%
+      setView(78.9629, 20.5937, zoom = 5) %>%
+      addProviderTiles(providers$Esri.WorldShadedRelief) %>%
+      addPolygons(
+        weight = 1,
+        stroke = TRUE,
+        color = "transparent",
+        fillOpacity = 0.7,
+        dashArray = "3",
+        highlight = highlightOptions(
+          weight = 2,
+          dashArray = "",
+          color = "red",
+          bringToFront = TRUE
+        )
+      ) %>%
       addTiles() %>%
       addHeatmap(
         lng = ~Longitude,
@@ -296,37 +329,48 @@ server <- function(input, output) {
         radius = 20,
         blur = 10
       ) %>%
-      addSearchGoogle()%>%
       addAwesomeMarkers(
         lat = ~Latitude, lng = ~Longitude,
+        icon = ~ logos[Category],
         popup = paste0(
+          "<p> <b>Heading: </b>", IND@data$Heading, "</p>",
+          "<img src = ", IND@data$Image,
+          ' width="100%"  height="100"', ">",
+          "<p> <b>Category: </b>",
+          IND@data$Category,
+          "</p>",
+          "<p> <b>Description: </b>",
+          IND@data$Description,
+          "</p>",
+          "<p> <b>State Name: </b>",
+          IND@data$State,
+          "</p>",
           "<p> <b>District Name: </b>",
-          filtered_data$KGISDistrictName,
+          IND@data$District,
+          "</p>",
+          "<p> <b>Address: </b>",
+          IND@data$Address,
+          "</p>",
+          "<p> <b>Pincode: </b>",
+          IND@data$Pincode,
           "</p>",
           "<p> <b>Village Name: </b>",
-          filtered_data$KGISVillageName,
+          IND@data$VillageName,
           "</p>",
-          "<p> <b>Anganawadi Name: </b>",
-          filtered_data$AnganawadiName,
+          "<p> <b>Village ID: </b>", IND@data$VillageID, "</p>",
+          "<p> <b>WardName: </b>", IND@data$WardName, "</p>",
+          "<p> <b>Longitude: </b>", IND@data$Longitude, "</p>",
+          "<p> <b>Latitude: </b>", IND@data$Latitude, "</p>",
+          "<p> <b>Ward Number: </b>",
+          IND@data$WardNumber,
           "</p>",
-          "<p> <b>Village Code: </b>",
-          filtered_data$KGISVillageCode,
-          "</p>",
-          "<p> <b>Type: </b>", filtered_data$Type, "</p>",
-          "<p> <b>Pincode: </b>", filtered_data$Pincode, "</p>",
-          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
-          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
-          "<p> <b>Anganawadi Worker Name: </b>",
-          filtered_data$AWWorkerName,
-          "</p>",
-          "<p> <b>Anganawadi Worker Phone: </b>",
-          filtered_data$AWWorkerPhone,
+          "<p> <b>Taluk Name: </b>",
+          IND@data$TalukName,
           "</p>"
         ),
         clusterOptions = markerClusterOptions()
       )
   })
-  
 }
 
 shinyApp(ui, server)
