@@ -117,38 +117,41 @@ one <- bootstrapPage(
   )
 )
 
-two <- bootstrapPage(
+two <- fluidPage(
   absolutePanel(
     style = "background: #dddddd; padding: 10px",
-    leafletOutput("mymap", height = 400, width = "210%"),
-    selectInput(
-      "District", "Select the District Name:",
-      # Appending ALL to have a option to load all locations
-      append("All", as.list(District$District), ),
-      # selecting ALL as default option
-      selected = "All",
-      multiple = TRUE
-    ),
-    selectInput(
-      "State", "Select the State Name:",
-      # Appending ALL to have a option to load all locations
-      append("All", as.list(State$State), ),
-      # selecting ALL as default option
-      selected = "All",
-      multiple = TRUE
-    ),
-    selectInput(
-      "Category", "Select the Category Name:",
-      # Appending ALL to have a option to load all locations
-      append("All", as.list(Category$Category), ),
-      # selecting ALL as default option
-      selected = "All",
-      multiple = TRUE
+    column(4, 
+           selectInput(
+             "District", "Select the District Name:",
+             # Appending ALL to have a option to load all locations
+             append("All", as.list(District$District), ),
+             # selecting ALL as default option
+             selected = "All",
+             multiple = TRUE
+           ),
+           selectInput(
+             "State", "Select the State Name:",
+             # Appending ALL to have a option to load all locations
+             append("All", as.list(State$State), ),
+             # selecting ALL as default option
+             selected = "All",
+             multiple = TRUE
+           ),
+           selectInput(
+             "Category", "Select the Category Name:",
+             # Appending ALL to have a option to load all locations
+             append("All", as.list(Category$Category), ),
+             # selecting ALL as default option
+             selected = "All",
+             multiple = TRUE
+           )
+        ),
+    column(
+      8, 
+      leafletOutput("layer_data", height = 400, width = "100%")
     )
   )
 )
-
-
 
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
