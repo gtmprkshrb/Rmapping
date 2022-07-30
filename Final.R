@@ -15,6 +15,7 @@ library(raster)
 library(mapview)
 library(mapboxapi)
 
+
 key <- "my_key"
 set_key(key = key)
 register_google(key = key)
@@ -53,8 +54,8 @@ Category <- bqdata %>%
 ui_front <- fluidPage(
   fluidRow(
     fluidRow(
-      column(8,
-             leafletOutput("layer_data", height = 700, width = "100%")
+      column(6,
+             leafletOutput("layer_data", height = 500, width = "100%")
       ),
       column(4, 
              selectInput(
@@ -85,8 +86,6 @@ ui_front <- fluidPage(
     )
   )
 )
-
-
 
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
@@ -302,9 +301,10 @@ server <- function(input, output) {
       
       
       addLayersControl(
+        position = "topright",
         baseGroups = c("mapbox", "outdoors", "light", "dark", "satellite"),
         overlayGroups = c("Clustering", "HeatMap", "geo_boundraies", "Markers"),
-        options = layersControlOptions(collapsed=TRUE, )
+        options = layersControlOptions(collapsed=TRUE)
       )
     
   })
