@@ -6,3 +6,4 @@
 bigquery.json
 *.Rproj
 Rmapping.Rproj
+.DS_Store
