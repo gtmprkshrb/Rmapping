@@ -158,7 +158,6 @@ ui <- dashboardPage(
 
 
 server <- function(input, output) {
-  
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
       dplyr::filter(
@@ -183,68 +182,51 @@ server <- function(input, output) {
         }
       )
     
-    IND@data <- filtered_data
-    
-    leaflet(IND) %>%  addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
+    leaflet(filtered_data) %>%  addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
       addMapboxTiles(username = "mapbox", style_id = "outdoors-v11", group = "outdoors") %>%
       addMapboxTiles(username = "mapbox", style_id = "light-v10", group = "light") %>%
       addMapboxTiles(username = "mapbox", style_id = "dark-v10", group = "dark") %>%
       addMapboxTiles(username = "mapbox", style_id = "satellite-v9", group = "satellite") %>%
       setView(78.9629, 20.5937, zoom = 4) %>%
       
-      addPolygons(
-        weight = 1,
-        group = "geo_boundraies",
-        stroke = TRUE,
-        color = "transparent",
-        fillOpacity = 0.7,
-        dashArray = "3",
-        highlight = highlightOptions(
-          weight = 2,
-          dashArray = "",
-          color = "red",
-          bringToFront = TRUE
-        )
-      ) %>%
-      
       addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
                         icon = ~ logos[Category],
-                        popup = paste0(
-                          "<p> <b>Heading: </b>", IND@data$Heading, "</p>",
-                          "<img src = ", IND@data$Image,
-                          ' width="100%"  height="100"', ">",
-                          "<p> <b>Category: </b>",
-                          IND@data$Category,
-                          "</p>",
-                          "<p> <b>Description: </b>",
-                          IND@data$Description,
-                          "</p>",
-                          "<p> <b>State Name: </b>",
-                          IND@data$State,
-                          "</p>",
-                          "<p> <b>District Name: </b>",
-                          IND@data$District,
-                          "</p>",
-                          "<p> <b>Address: </b>",
-                          IND@data$Address,
-                          "</p>",
-                          "<p> <b>Pincode: </b>",
-                          IND@data$Pincode,
-                          "</p>",
-                          "<p> <b>Village Name: </b>",
-                          IND@data$VillageName,
-                          "</p>",
-                          "<p> <b>Village ID: </b>", IND@data$VillageID, "</p>",
-                          "<p> <b>WardName: </b>", IND@data$WardName, "</p>",
-                          "<p> <b>Longitude: </b>", IND@data$Longitude, "</p>",
-                          "<p> <b>Latitude: </b>", IND@data$Latitude, "</p>",
-                          "<p> <b>Ward Number: </b>",
-                          IND@data$WardNumber,
-                          "</p>",
-                          "<p> <b>Taluk Name: </b>",
-                          IND@data$TalukName,
-                          "</p>"
-                        ),
+ popup = paste0(
+          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+          "<img src = ", filtered_data$Image,
+          ' width="100%"  height="100"', ">",
+          "<p> <b>Category: </b>",
+          filtered_data$Category,
+          "</p>",
+          "<p> <b>Description: </b>",
+          filtered_data$Description,
+          "</p>",
+          "<p> <b>State Name: </b>",
+          filtered_data$State,
+          "</p>",
+          "<p> <b>District Name: </b>",
+          filtered_data$District,
+          "</p>",
+          "<p> <b>Address: </b>",
+          filtered_data$Address,
+          "</p>",
+          "<p> <b>Pincode: </b>",
+          filtered_data$Pincode,
+          "</p>",
+          "<p> <b>Village Name: </b>",
+          filtered_data$VillageName,
+          "</p>",
+          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
+          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
+          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
+          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
+          "<p> <b>Ward Number: </b>",
+          filtered_data$WardNumber,
+          "</p>",
+          "<p> <b>Taluk Name: </b>",
+          filtered_data$TalukName,
+          "</p>"
+        ),
                         clusterOptions = markerClusterOptions()) %>%
       
       addAwesomeMarkers(
@@ -252,39 +234,39 @@ server <- function(input, output) {
         lat = ~Latitude, lng = ~Longitude,
         icon = ~ logos[Category],
         popup = paste0(
-          "<p> <b>Heading: </b>", IND@data$Heading, "</p>",
-          "<img src = ", IND@data$Image,
+          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+          "<img src = ", filtered_data$Image,
           ' width="100%"  height="100"', ">",
           "<p> <b>Category: </b>",
-          IND@data$Category,
+          filtered_data$Category,
           "</p>",
           "<p> <b>Description: </b>",
-          IND@data$Description,
+          filtered_data$Description,
           "</p>",
           "<p> <b>State Name: </b>",
-          IND@data$State,
+          filtered_data$State,
           "</p>",
           "<p> <b>District Name: </b>",
-          IND@data$District,
+          filtered_data$District,
           "</p>",
           "<p> <b>Address: </b>",
-          IND@data$Address,
+          filtered_data$Address,
           "</p>",
           "<p> <b>Pincode: </b>",
-          IND@data$Pincode,
+          filtered_data$Pincode,
           "</p>",
           "<p> <b>Village Name: </b>",
-          IND@data$VillageName,
+          filtered_data$VillageName,
           "</p>",
-          "<p> <b>Village ID: </b>", IND@data$VillageID, "</p>",
-          "<p> <b>WardName: </b>", IND@data$WardName, "</p>",
-          "<p> <b>Longitude: </b>", IND@data$Longitude, "</p>",
-          "<p> <b>Latitude: </b>", IND@data$Latitude, "</p>",
+          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
+          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
+          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
+          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
           "<p> <b>Ward Number: </b>",
-          IND@data$WardNumber,
+          filtered_data$WardNumber,
           "</p>",
           "<p> <b>Taluk Name: </b>",
-          IND@data$TalukName,
+          filtered_data$TalukName,
           "</p>"
         )
       ) %>%
