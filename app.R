@@ -14,13 +14,15 @@ library(ggmap)
 library(raster)
 library(mapview)
 library(mapboxapi)
+library(dotenv)
 
+load_dot_env()
 
-key <- "my_key"
+key <- Sys.getenv("GPS_TOKEN")
 set_key(key = key)
 register_google(key = key)
 
-my_token <- "my_key"
+my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = FALSE)
 
