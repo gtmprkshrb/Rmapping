@@ -24,7 +24,7 @@ register_google(key = key)
 
 my_token <- Sys.getenv("MAPBOX_TOKEN")
 
-mapboxapi::mb_access_token(my_token, install = FALSE)
+mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
 bq_auth(path = "bigquery.json")
 sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 100"
