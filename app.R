@@ -15,6 +15,7 @@ library(raster)
 library(mapview)
 library(mapboxapi)
 library(dotenv)
+library(hover)
 
 load_dot_env()
 
@@ -50,34 +51,38 @@ Category <- bqdata %>%
 
 ui_front <- fluidPage(
   fluidRow(
-    fluidRow(
-      column(6,
+    absolutePanel(
+      column(8,
              leafletOutput("layer_data", height = 500, width = "100%")
       ),
       column(4, 
-             selectInput(
-               "District", "Select the District Name:",
-               # Appending ALL to have a option to load all locations
-               append("All", as.list(District$District), ),
-               # selecting ALL as default option
-               selected = "All",
-               multiple = TRUE
-             ),
-             selectInput(
-               "State", "Select the State Name:",
-               # Appending ALL to have a option to load all locations
-               append("All", as.list(State$State), ),
-               # selecting ALL as default option
-               selected = "All",
-               multiple = TRUE
-             ),
-             selectInput(
-               "Category", "Select the Category Name:",
-               # Appending ALL to have a option to load all locations
-               append("All", as.list(Category$Category), ),
-               # selecting ALL as default option
-               selected = "All",
-               multiple = TRUE
+             checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
+             conditionalPanel(
+               condition = "input.smooth == true",
+               selectInput(
+                 "District", "Select the District Name:",
+                 # Appending ALL to have a option to load all locations
+                 append("All", as.list(District$District), ),
+                 # selecting ALL as default option
+                 selected = "All",
+                 multiple = TRUE
+               ),
+               selectInput(
+                 "State", "Select the State Name:",
+                 # Appending ALL to have a option to load all locations
+                 append("All", as.list(State$State), ),
+                 # selecting ALL as default option
+                 selected = "All",
+                 multiple = TRUE
+               ),
+               selectInput(
+                 "Category", "Select the Category Name:",
+                 # Appending ALL to have a option to load all locations
+                 append("All", as.list(Category$Category), ),
+                 # selecting ALL as default option
+                 selected = "All",
+                 multiple = TRUE
+               )
              )
       )
     )
@@ -191,42 +196,42 @@ server <- function(input, output) {
       
       addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
                         icon = ~ logos[Category],
- popup = paste0(
-          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-          "<img src = ", filtered_data$Image,
-          ' width="100%"  height="100"', ">",
-          "<p> <b>Category: </b>",
-          filtered_data$Category,
-          "</p>",
-          "<p> <b>Description: </b>",
-          filtered_data$Description,
-          "</p>",
-          "<p> <b>State Name: </b>",
-          filtered_data$State,
-          "</p>",
-          "<p> <b>District Name: </b>",
-          filtered_data$District,
-          "</p>",
-          "<p> <b>Address: </b>",
-          filtered_data$Address,
-          "</p>",
-          "<p> <b>Pincode: </b>",
-          filtered_data$Pincode,
-          "</p>",
-          "<p> <b>Village Name: </b>",
-          filtered_data$VillageName,
-          "</p>",
-          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
-          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
-          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
-          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
-          "<p> <b>Ward Number: </b>",
-          filtered_data$WardNumber,
-          "</p>",
-          "<p> <b>Taluk Name: </b>",
-          filtered_data$TalukName,
-          "</p>"
-        ),
+                        popup = paste0(
+                          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+                          "<img src = ", filtered_data$Image,
+                          ' width="100%"  height="100"', ">",
+                          "<p> <b>Category: </b>",
+                          filtered_data$Category,
+                          "</p>",
+                          "<p> <b>Description: </b>",
+                          filtered_data$Description,
+                          "</p>",
+                          "<p> <b>State Name: </b>",
+                          filtered_data$State,
+                          "</p>",
+                          "<p> <b>District Name: </b>",
+                          filtered_data$District,
+                          "</p>",
+                          "<p> <b>Address: </b>",
+                          filtered_data$Address,
+                          "</p>",
+                          "<p> <b>Pincode: </b>",
+                          filtered_data$Pincode,
+                          "</p>",
+                          "<p> <b>Village Name: </b>",
+                          filtered_data$VillageName,
+                          "</p>",
+                          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
+                          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
+                          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
+                          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
+                          "<p> <b>Ward Number: </b>",
+                          filtered_data$WardNumber,
+                          "</p>",
+                          "<p> <b>Taluk Name: </b>",
+                          filtered_data$TalukName,
+                          "</p>"
+                        ),
                         clusterOptions = markerClusterOptions()) %>%
       
       addAwesomeMarkers(
