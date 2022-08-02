@@ -81,6 +81,12 @@ ui_front <- fluidPage(
         # selecting ALL as default option
         selected = "All",
         multiple = TRUE
+      ),
+      selectInput(
+        width = "50%",
+        inputId = "filter", 
+        label = "City",
+        choices = list("mumbai", "pune", "hyderabad")
       )
     )
   )
@@ -90,18 +96,15 @@ ui_front <- fluidPage(
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
     icon = "road",
-    markerColor = "white",
-    library = "fa"
+    markerColor = "white"
   ),
   "Garbage Collection" = makeAwesomeIcon(
     icon = "trash",
-    markerColor = "green",
-    library = "fa"
+    markerColor = "green"
   ),
   "Air Quality" = makeAwesomeIcon(
     icon = "cloud",
-    markerColor = "blue",
-    library = "fa"
+    markerColor = "blue"
   )
 )
 
@@ -190,88 +193,35 @@ server <- function(input, output) {
       addMapboxTiles(username = "mapbox", style_id = "light-v10", group = "light") %>%
       addMapboxTiles(username = "mapbox", style_id = "dark-v10", group = "dark") %>%
       addMapboxTiles(username = "mapbox", style_id = "satellite-v9", group = "satellite") %>%
-      setView(78.9629, 20.5937, zoom = 4) %>%
+      setView(78.9629, 20.5937, zoom = 5) %>%
       addFullscreenControl(pseudoFullscreen = TRUE) %>%
       
       addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
-                        icon = ~ logos[Category],
+                        icon = ~logos[Category],
                         popup = paste0(
                           "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
                           "<img src = ", filtered_data$Image,
                           ' width="100%"  height="100"', ">",
-                          "<p> <b>Category: </b>",
-                          filtered_data$Category,
-                          "</p>",
-                          "<p> <b>Description: </b>",
-                          filtered_data$Description,
-                          "</p>",
-                          "<p> <b>State Name: </b>",
-                          filtered_data$State,
-                          "</p>",
-                          "<p> <b>District Name: </b>",
-                          filtered_data$District,
-                          "</p>",
-                          "<p> <b>Address: </b>",
-                          filtered_data$Address,
-                          "</p>",
-                          "<p> <b>Pincode: </b>",
-                          filtered_data$Pincode,
-                          "</p>",
-                          "<p> <b>Village Name: </b>",
-                          filtered_data$VillageName,
-                          "</p>",
-                          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
-                          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
-                          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
-                          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
-                          "<p> <b>Ward Number: </b>",
-                          filtered_data$WardNumber,
-                          "</p>",
-                          "<p> <b>Taluk Name: </b>",
-                          filtered_data$TalukName,
-                          "</p>"
+                          "<b>Description: </b>",filtered_data$Description,"<br>",
+                          "<b>State Name: </b>",filtered_data$State,"<br>",
+                          "<b>District Name: </b>",filtered_data$District,"<br>",
+                          "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
                         ),
                         clusterOptions = markerClusterOptions()) %>%
       
       addAwesomeMarkers(
         group = "Markers",
         lat = ~Latitude, lng = ~Longitude,
-        icon = ~ logos[Category],
+        icon = ~logos[Category],
+        popupOptions = (maxWidth = 200),
         popup = paste0(
           "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
           "<img src = ", filtered_data$Image,
           ' width="100%"  height="100"', ">",
-          "<p> <b>Category: </b>",
-          filtered_data$Category,
-          "</p>",
-          "<p> <b>Description: </b>",
-          filtered_data$Description,
-          "</p>",
-          "<p> <b>State Name: </b>",
-          filtered_data$State,
-          "</p>",
-          "<p> <b>District Name: </b>",
-          filtered_data$District,
-          "</p>",
-          "<p> <b>Address: </b>",
-          filtered_data$Address,
-          "</p>",
-          "<p> <b>Pincode: </b>",
-          filtered_data$Pincode,
-          "</p>",
-          "<p> <b>Village Name: </b>",
-          filtered_data$VillageName,
-          "</p>",
-          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
-          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
-          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
-          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
-          "<p> <b>Ward Number: </b>",
-          filtered_data$WardNumber,
-          "</p>",
-          "<p> <b>Taluk Name: </b>",
-          filtered_data$TalukName,
-          "</p>"
+          "<b>Description: </b>",filtered_data$Description,"<br>",
+          "<b>State Name: </b>",filtered_data$State,"<br>",
+          "<b>District Name: </b>",filtered_data$District,"<br>",
+          "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
         )
       ) %>%
       
