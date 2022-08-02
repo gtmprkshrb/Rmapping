@@ -50,44 +50,42 @@ Category <- bqdata %>%
   distinct()
 
 ui_front <- fluidPage(
-  fluidRow(
-    absolutePanel(
-      column(8,
-             leafletOutput("layer_data", height = 500, width = "100%")
+  leafletOutput("layer_data", height = 500, width = "100%"),
+  absolutePanel(
+    checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
+    conditionalPanel(
+      condition = "input.smooth == true",
+      selectInput(
+        width = "50%",
+        "District", "Select the District Name:",
+        # Appending ALL to have a option to load all locations
+        append("All", as.list(District$District), ),
+        # selecting ALL as default option
+        selected = "All",
+        multiple = TRUE
       ),
-      column(4, 
-             checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
-             conditionalPanel(
-               condition = "input.smooth == true",
-               selectInput(
-                 "District", "Select the District Name:",
-                 # Appending ALL to have a option to load all locations
-                 append("All", as.list(District$District), ),
-                 # selecting ALL as default option
-                 selected = "All",
-                 multiple = TRUE
-               ),
-               selectInput(
-                 "State", "Select the State Name:",
-                 # Appending ALL to have a option to load all locations
-                 append("All", as.list(State$State), ),
-                 # selecting ALL as default option
-                 selected = "All",
-                 multiple = TRUE
-               ),
-               selectInput(
-                 "Category", "Select the Category Name:",
-                 # Appending ALL to have a option to load all locations
-                 append("All", as.list(Category$Category), ),
-                 # selecting ALL as default option
-                 selected = "All",
-                 multiple = TRUE
-               )
-             )
+      selectInput(
+        width = "50%",
+        "State", "Select the State Name:",
+        # Appending ALL to have a option to load all locations
+        append("All", as.list(State$State), ),
+        # selecting ALL as default option
+        selected = "All",
+        multiple = TRUE
+      ),
+      selectInput(
+        width = "50%",
+        "Category", "Select the Category Name:",
+        # Appending ALL to have a option to load all locations
+        append("All", as.list(Category$Category), ),
+        # selecting ALL as default option
+        selected = "All",
+        multiple = TRUE
       )
     )
   )
 )
+
 
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
@@ -193,6 +191,7 @@ server <- function(input, output) {
       addMapboxTiles(username = "mapbox", style_id = "dark-v10", group = "dark") %>%
       addMapboxTiles(username = "mapbox", style_id = "satellite-v9", group = "satellite") %>%
       setView(78.9629, 20.5937, zoom = 4) %>%
+      addFullscreenControl(pseudoFullscreen = TRUE) %>%
       
       addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
                         icon = ~ logos[Category],
