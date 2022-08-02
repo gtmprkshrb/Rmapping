@@ -1,4 +1,4 @@
-#install.packages('raster', repos='https://rspatial.r-universe.dev')
+# install.packages('raster', repos='https://rspatial.r-universe.dev')
 library(maps)
 library(sf)
 library(shinydashboard)
@@ -49,9 +49,11 @@ Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
-ui_front <- fluidPage(
-  leafletOutput("layer_data", height = 500, width = "100%"),
+ui_front <- fillPage(
+  leafletOutput("layer_data", width = "100%"),
   absolutePanel(
+    style = "background: transparent; ",
+    top = 75, right = -160, draggable = TRUE, width = "50%",
     checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
     conditionalPanel(
       condition = "input.smooth == true",
@@ -86,7 +88,6 @@ ui_front <- fluidPage(
   )
 )
 
-
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
     icon = "road",
@@ -94,7 +95,7 @@ logos <- awesomeIconList(
     library = "fa"
   ),
   "Garbage Collection" = makeAwesomeIcon(
-    icon = "trash",
+    icon = "fire",
     markerColor = "green",
     library = "fa"
   ),
@@ -106,7 +107,7 @@ logos <- awesomeIconList(
 )
 
 geosearch1 <- basicPage(
-  HTML(paste0(" <script> 
+  HTML(paste0(" <script>
                 function initAutocomplete() {
 
                 var autocomplete = new google.maps.places.Autocomplete(document.getElementById('address'),{types: ['geocode']});
@@ -139,8 +140,8 @@ geosearch1 <- basicPage(
                 Shiny.onInputChange('jsValueAddressNumber', address_number);
                 Shiny.onInputChange('jsValuePretty', addressPretty);
                 Shiny.onInputChange('jsValueCoords', coords);});}
-                </script> 
-                <script src='https://maps.googleapis.com/maps/api/js?key=", key,"&libraries=places&callback=initAutocomplete' async defer></script>"))
+                </script>
+                <script src='https://maps.googleapis.com/maps/api/js?key=", key, "&libraries=places&callback=initAutocomplete' async defer></script>"))
 )
 
 
@@ -156,7 +157,6 @@ ui <- dashboardPage(
     )
   )
 )
-
 
 
 
@@ -185,54 +185,55 @@ server <- function(input, output) {
         }
       )
     
-    leaflet(filtered_data) %>%  addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
+    leaflet(filtered_data) %>%
+      addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
       addMapboxTiles(username = "mapbox", style_id = "outdoors-v11", group = "outdoors") %>%
       addMapboxTiles(username = "mapbox", style_id = "light-v10", group = "light") %>%
       addMapboxTiles(username = "mapbox", style_id = "dark-v10", group = "dark") %>%
       addMapboxTiles(username = "mapbox", style_id = "satellite-v9", group = "satellite") %>%
       setView(78.9629, 20.5937, zoom = 4) %>%
       addFullscreenControl(pseudoFullscreen = TRUE) %>%
-      
-      addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
-                        icon = ~ logos[Category],
-                        popup = paste0(
-                          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-                          "<img src = ", filtered_data$Image,
-                          ' width="100%"  height="100"', ">",
-                          "<p> <b>Category: </b>",
-                          filtered_data$Category,
-                          "</p>",
-                          "<p> <b>Description: </b>",
-                          filtered_data$Description,
-                          "</p>",
-                          "<p> <b>State Name: </b>",
-                          filtered_data$State,
-                          "</p>",
-                          "<p> <b>District Name: </b>",
-                          filtered_data$District,
-                          "</p>",
-                          "<p> <b>Address: </b>",
-                          filtered_data$Address,
-                          "</p>",
-                          "<p> <b>Pincode: </b>",
-                          filtered_data$Pincode,
-                          "</p>",
-                          "<p> <b>Village Name: </b>",
-                          filtered_data$VillageName,
-                          "</p>",
-                          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
-                          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
-                          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
-                          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
-                          "<p> <b>Ward Number: </b>",
-                          filtered_data$WardNumber,
-                          "</p>",
-                          "<p> <b>Taluk Name: </b>",
-                          filtered_data$TalukName,
-                          "</p>"
-                        ),
-                        clusterOptions = markerClusterOptions()) %>%
-      
+      addAwesomeMarkers(
+        group = "Clustering", lat = ~Latitude, lng = ~Longitude,
+        icon = ~ logos[Category],
+        popup = paste0(
+          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+          "<img src = ", filtered_data$Image,
+          ' width="100%"  height="100"', ">",
+          "<p> <b>Category: </b>",
+          filtered_data$Category,
+          "</p>",
+          "<p> <b>Description: </b>",
+          filtered_data$Description,
+          "</p>",
+          "<p> <b>State Name: </b>",
+          filtered_data$State,
+          "</p>",
+          "<p> <b>District Name: </b>",
+          filtered_data$District,
+          "</p>",
+          "<p> <b>Address: </b>",
+          filtered_data$Address,
+          "</p>",
+          "<p> <b>Pincode: </b>",
+          filtered_data$Pincode,
+          "</p>",
+          "<p> <b>Village Name: </b>",
+          filtered_data$VillageName,
+          "</p>",
+          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
+          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
+          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
+          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
+          "<p> <b>Ward Number: </b>",
+          filtered_data$WardNumber,
+          "</p>",
+          "<p> <b>Taluk Name: </b>",
+          filtered_data$TalukName,
+          "</p>"
+        ),
+        clusterOptions = markerClusterOptions()
+      ) %>%
       addAwesomeMarkers(
         group = "Markers",
         lat = ~Latitude, lng = ~Longitude,
@@ -274,22 +275,21 @@ server <- function(input, output) {
           "</p>"
         )
       ) %>%
-      
-      addHeatmap(lng = ~Longitude,
-                 lat = ~Latitude,
-                 intensity = 20,
-                 max = 100,
-                 radius = 20,
-                 blur = 20, group = "HeatMap") %>%  addSearchGoogle(searchOptions(autoCollapse = TRUE, minLength = 8)) %>%
-      
-      
+      addHeatmap(
+        lng = ~Longitude,
+        lat = ~Latitude,
+        intensity = 20,
+        max = 100,
+        radius = 20,
+        blur = 20, group = "HeatMap"
+      ) %>%
+      addSearchGoogle(searchOptions(autoCollapse = TRUE, minLength = 8)) %>%
       addLayersControl(
         position = "topright",
         baseGroups = c("mapbox", "outdoors", "light", "dark", "satellite"),
         overlayGroups = c("Clustering", "HeatMap", "geo_boundraies", "Markers"),
-        options = layersControlOptions(collapsed=TRUE)
+        options = layersControlOptions(collapsed = TRUE)
       )
-    
   })
 }
 
