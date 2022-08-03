@@ -49,8 +49,8 @@ Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
-ui_front <- fluidPage(
-  leafletOutput("layer_data", height = 500, width = "100%"),
+ui_front <- bootstrapPage(
+  leafletOutput("layer_data", height = 600, width = "100%"),
   absolutePanel(
     checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
     conditionalPanel(
