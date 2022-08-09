@@ -27,6 +27,12 @@ my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
+data_cities = data.frame(
+  city = c('Bangalore', 'Chennai', 'Delhi', 'Mumbai'),
+  lat = c(12.9539974, 13.0473748, 28.6921165, 19.0821978),
+  lng = c(77.6309395, 79.9288083, 76.8079346, 72.741098)
+)
+
 bq_auth(path = "bigquery.json")
 sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 100"
 ds <- bq_dataset("tides-saas-309509", "cleanscale")
@@ -48,6 +54,8 @@ District <- bqdata %>%
 Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
+
+
 
 ui_front <- bootstrapPage(
   leafletOutput("layer_data", height = 600, width = "100%"),
@@ -84,9 +92,9 @@ ui_front <- bootstrapPage(
       ),
       selectInput(
         width = "50%",
-        inputId = "filter", 
-        label = "City",
-        choices = list("mumbai", "pune", "hyderabad")
+        inputId = "select_city", 
+        label = "Select city",
+        choices = data_cities$city
       )
     )
   )
@@ -164,6 +172,15 @@ ui <- dashboardPage(
 
 
 server <- function(input, output) {
+  #Zoom when select city
+  observeEvent(input$select_city, {
+    selected_city_data <- data_cities %>%
+      filter(city == input$select_city)
+    
+    leafletProxy("layer_data") %>%
+      setView(lng = selected_city_data$lng, lat = selected_city_data$lat, zoom=8) 
+  })
+  
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
       dplyr::filter(
@@ -193,7 +210,7 @@ server <- function(input, output) {
       addMapboxTiles(username = "mapbox", style_id = "light-v10", group = "light") %>%
       addMapboxTiles(username = "mapbox", style_id = "dark-v10", group = "dark") %>%
       addMapboxTiles(username = "mapbox", style_id = "satellite-v9", group = "satellite") %>%
-      setView(78.9629, 20.5937, zoom = 5) %>%
+      setView(78.9629, 20.5937, zoom = 5) %>% 
       addFullscreenControl(pseudoFullscreen = TRUE) %>%
       
       addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
@@ -239,7 +256,7 @@ server <- function(input, output) {
         overlayGroups = c("Clustering", "HeatMap", "geo_boundraies", "Markers"),
         options = layersControlOptions(collapsed=TRUE)
       )
-    
+     
   })
 }
 
