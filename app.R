@@ -95,7 +95,7 @@ logos <- awesomeIconList(
     library = "fa"
   ),
   "Garbage Collection" = makeAwesomeIcon(
-    icon = "fire",
+    icon = "trash",
     markerColor = "green",
     library = "fa"
   ),
