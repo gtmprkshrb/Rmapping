@@ -31,8 +31,8 @@ bq_auth(path = "bigquery.json")
 sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 100"
 ds <- bq_dataset("tides-saas-309509", "cleanscale")
 tb <- bq_dataset_query(ds,
-                       query = sql,
-                       billing = "tides-saas-309509"
+  query = sql,
+  billing = "tides-saas-309509"
 )
 bqdata <- bq_table_download(tb)
 State <- bqdata %>%
@@ -52,8 +52,8 @@ Category <- bqdata %>%
 ui_front <- fillPage(
   leafletOutput("layer_data", width = "100%"),
   absolutePanel(
-    style = "background: transparent; ",
-    top = 75, right = -160, draggable = TRUE, width = "50%",
+    style = "background: transparent; right: 0; ",
+    top = 125, draggable = TRUE, width = "50%",
     checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
     conditionalPanel(
       condition = "input.smooth == true",
@@ -184,7 +184,7 @@ server <- function(input, output) {
           Category %in% input$Category
         }
       )
-    
+
     leaflet(filtered_data) %>%
       addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
       addMapboxTiles(username = "mapbox", style_id = "outdoors-v11", group = "outdoors") %>%
