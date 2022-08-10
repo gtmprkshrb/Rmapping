@@ -203,7 +203,7 @@ server <- function(input, output) {
     
     leafletProxy("layer_data") %>%
       setView(78.9629, 20.5937, zoom = 5) %>%   
-      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>% hideGroup(group = "india_boundaries")
+      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>% hideGroup(group = "state_boundaries")
   })
   
   observeEvent(input$india_boundary, {
