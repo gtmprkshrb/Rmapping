@@ -1,4 +1,4 @@
-#install.packages('raster', repos='https://rspatial.r-universe.dev')
+
 library(maps)
 library(sf)
 library(shinydashboard)
@@ -6,18 +6,23 @@ library(leaflet)
 library(dplyr)
 library(shiny)
 library(bigrquery)
-library(googleway)
 library(fontawesome)
 library(leaflet.extras)
-library(magrittr)
 library(ggmap)
 library(raster)
 library(mapview)
 library(mapboxapi)
 library(dotenv)
 library(hover)
+library(rjson)
 
 load_dot_env()
+
+json_data <- fromJSON(file="state.json")
+
+district_data <- fromJSON(file="district.json")
+
+ward_data <- fromJSON(file = "ward.json")
 
 key <- Sys.getenv("GPS_TOKEN")
 set_key(key = key)
@@ -28,13 +33,16 @@ my_token <- Sys.getenv("MAPBOX_TOKEN")
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
 data_cities = data.frame(
-  city = c('Bangalore', 'Chennai', 'Delhi', 'Mumbai'),
-  lat = c(12.9539974, 13.0473748, 28.6921165, 19.0821978),
-  lng = c(77.6309395, 79.9288083, 76.8079346, 72.741098)
+  city = c('Tehri' ,'Hosur', 'Hubli', 'Bangalore', 'Chennai', 'Delhi', 'Mumbai'),
+  lat = c(30.3787141, 12.7378317, 15.3575775, 12.9539974, 13.0473748, 28.6921165, 19.0821978),
+  lng = c(78.4286888, 77.7626863, 75.039107, 77.6309395, 79.9288083, 76.8079346, 72.741098)
 )
 
+select_boundaries = data.frame(boundary = c("state_boundaries", "district_boundaries", "ward_boundaries"))
+
+
 bq_auth(path = "bigquery.json")
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 100"
+sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 500"
 ds <- bq_dataset("tides-saas-309509", "cleanscale")
 tb <- bq_dataset_query(ds,
                        query = sql,
@@ -58,8 +66,10 @@ Category <- bqdata %>%
 
 
 ui_front <- bootstrapPage(
-  leafletOutput("layer_data", height = 600, width = "100%"),
+  leafletOutput("layer_data", height = 700, width = "100%"),
   absolutePanel(
+    style = "background: transparent; right: 0; ",
+    top = 125, draggable = TRUE, width = "50%",
     checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
     conditionalPanel(
       condition = "input.smooth == true",
@@ -95,6 +105,12 @@ ui_front <- bootstrapPage(
         inputId = "select_city", 
         label = "Select city",
         choices = data_cities$city
+      ),
+      selectInput(
+        width = "50%",
+        inputId = "india_boundary", 
+        label = "India Boundary",
+        choices = select_boundaries
       )
     )
   )
@@ -104,7 +120,7 @@ ui_front <- bootstrapPage(
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
     icon = "road",
-    markerColor = "white"
+    markerColor = "black"
   ),
   "Garbage Collection" = makeAwesomeIcon(
     icon = "trash",
@@ -181,6 +197,33 @@ server <- function(input, output) {
       setView(lng = selected_city_data$lng, lat = selected_city_data$lat, zoom=8) 
   })
   
+  observeEvent(input$india_boundary, {
+    select_boundary <- select_boundaries %>%
+      filter(boundary == input$india_boundary)
+    
+    leafletProxy("layer_data") %>%
+      setView(78.9629, 20.5937, zoom = 5) %>%   
+      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>% hideGroup(group = "india_boundaries")
+  })
+  
+  observeEvent(input$india_boundary, {
+    select_boundary <- select_boundaries %>%
+      filter("district_boundaries" == input$india_boundary)
+    
+    leafletProxy("layer_data") %>%
+      setView(78.9629, 20.5937, zoom = 5) %>%   
+      addGeoJSON(district_data, fillColor = "orange", fillOpacity = 0.1, weight = 3, color = "green", group = "district_boundaries") %>% hideGroup(group = "district_boundaries")
+  })
+  
+  observeEvent(input$india_boundary, {
+    select_boundary <- select_boundaries %>%
+      filter("ward_boundaries" == input$india_boundary)
+    
+    leafletProxy("layer_data") %>%
+      setView(78.9629, 20.5937, zoom = 5) %>%   
+      addGeoJSONChoropleth(ward_data, valueProperty = "yellow", group ="ward_boundaries" ) %>% hideGroup(group = "ward_boundaries")
+  })
+  
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
       dplyr::filter(
@@ -240,7 +283,8 @@ server <- function(input, output) {
           "<b>District Name: </b>",filtered_data$District,"<br>",
           "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
         )
-      ) %>%
+      ) %>% 
+      
       
       addHeatmap(lng = ~Longitude,
                  lat = ~Latitude,
@@ -253,10 +297,11 @@ server <- function(input, output) {
       addLayersControl(
         position = "topright",
         baseGroups = c("mapbox", "outdoors", "light", "dark", "satellite"),
-        overlayGroups = c("Clustering", "HeatMap", "geo_boundraies", "Markers"),
+        overlayGroups = c("Clustering", "HeatMap", "state_boundaries", "Markers", "district_boundaries", "ward_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
+        
       )
-     
+    
   })
 }
 
