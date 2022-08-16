@@ -1,11 +1,12 @@
 #install.packages('raster', repos='https://rspatial.r-universe.dev')
+
+library(RPostgres)
 library(maps)
 library(sf)
 library(shinydashboard)
 library(leaflet)
 library(dplyr)
 library(shiny)
-library(bigrquery)
 library(googleway)
 library(fontawesome)
 library(leaflet.extras)
@@ -15,6 +16,7 @@ library(raster)
 library(mapview)
 library(mapboxapi)
 library(dotenv)
+library(DBI)
 
 load_dot_env()
 
@@ -26,14 +28,15 @@ my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
-bq_auth(path = "bigquery.json")
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 100"
-ds <- bq_dataset("tides-saas-309509", "cleanscale")
-tb <- bq_dataset_query(ds,
-                       query = sql,
-                       billing = "tides-saas-309509"
-)
-bqdata <- bq_table_download(tb)
+db <- '_95263123ff933d46'
+host_db <- '127.0.0.1'
+db_port <- '5432'
+db_user <- 'postgres'  
+db_password <- '7kGP6f9qjq4jnGlf'
+con <- dbConnect(RPostgres::Postgres(), dbname = db, host=host_db, port=db_port, user=db_user, password=db_password)
+
+
+bqdata <- dbGetQuery(con, 'SELECT * FROM cleanscale')
 State <- bqdata %>%
   dplyr::select(State) %>%
   distinct()
