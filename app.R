@@ -25,7 +25,6 @@ district_data <- fromJSON(file="district.json")
 ward_data <- fromJSON(file = "ward.json")
 
 key <- Sys.getenv("GPS_TOKEN")
-set_key(key = key)
 register_google(key = key)
 
 my_token <- Sys.getenv("MAPBOX_TOKEN")
@@ -42,7 +41,7 @@ select_boundaries = data.frame(boundary = c("state_boundaries", "district_bounda
 
 
 bq_auth(path = "bigquery.json")
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 500"
+sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale`"
 ds <- bq_dataset("tides-saas-309509", "cleanscale")
 tb <- bq_dataset_query(ds,
                        query = sql,
@@ -66,7 +65,7 @@ Category <- bqdata %>%
 
 
 ui_front <- bootstrapPage(
-  leafletOutput("layer_data", height = 700, width = "100%"),
+  leafletOutput("layer_data", height = 650, width = "100%"),
   absolutePanel(
     style = "background: transparent; right: 0; ",
     top = 125, draggable = TRUE, width = "50%",
@@ -185,8 +184,6 @@ ui <- dashboardPage(
 )
 
 
-
-
 server <- function(input, output) {
   #Zoom when select city
   observeEvent(input$select_city, {
@@ -194,7 +191,7 @@ server <- function(input, output) {
       filter(city == input$select_city)
     
     leafletProxy("layer_data") %>%
-      setView(lng = selected_city_data$lng, lat = selected_city_data$lat, zoom=8) 
+      setView(lng = selected_city_data$lng, lat = selected_city_data$lat, zoom=10)
   })
   
   observeEvent(input$india_boundary, {
@@ -202,7 +199,6 @@ server <- function(input, output) {
       filter(boundary == input$india_boundary)
     
     leafletProxy("layer_data") %>%
-      setView(78.9629, 20.5937, zoom = 5) %>%   
       addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>% hideGroup(group = "state_boundaries")
   })
   
@@ -211,7 +207,6 @@ server <- function(input, output) {
       filter("district_boundaries" == input$india_boundary)
     
     leafletProxy("layer_data") %>%
-      setView(78.9629, 20.5937, zoom = 5) %>%   
       addGeoJSON(district_data, fillColor = "orange", fillOpacity = 0.1, weight = 3, color = "green", group = "district_boundaries") %>% hideGroup(group = "district_boundaries")
   })
   
@@ -220,7 +215,6 @@ server <- function(input, output) {
       filter("ward_boundaries" == input$india_boundary)
     
     leafletProxy("layer_data") %>%
-      setView(78.9629, 20.5937, zoom = 5) %>%   
       addGeoJSONChoropleth(ward_data, valueProperty = "yellow", group ="ward_boundaries" ) %>% hideGroup(group = "ward_boundaries")
   })
   
@@ -267,23 +261,7 @@ server <- function(input, output) {
                           "<b>District Name: </b>",filtered_data$District,"<br>",
                           "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
                         ),
-                        clusterOptions = markerClusterOptions()) %>%
-      
-      addAwesomeMarkers(
-        group = "Markers",
-        lat = ~Latitude, lng = ~Longitude,
-        icon = ~logos[Category],
-        popupOptions = (maxWidth = 200),
-        popup = paste0(
-          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-          "<img src = ", filtered_data$Image,
-          ' width="100%"  height="100"', ">",
-          "<b>Description: </b>",filtered_data$Description,"<br>",
-          "<b>State Name: </b>",filtered_data$State,"<br>",
-          "<b>District Name: </b>",filtered_data$District,"<br>",
-          "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
-        )
-      ) %>% 
+                        clusterOptions = markerClusterOptions()) %>% hideGroup(group = "Clustering") %>%
       
       
       addHeatmap(lng = ~Longitude,
@@ -297,7 +275,7 @@ server <- function(input, output) {
       addLayersControl(
         position = "topright",
         baseGroups = c("mapbox", "outdoors", "light", "dark", "satellite"),
-        overlayGroups = c("Clustering", "HeatMap", "state_boundaries", "Markers", "district_boundaries", "ward_boundaries"),
+        overlayGroups = c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
         
       )
