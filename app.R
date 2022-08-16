@@ -41,7 +41,7 @@ select_boundaries = data.frame(boundary = c("state_boundaries", "district_bounda
 
 
 bq_auth(path = "bigquery.json")
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale`"
+sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 500"
 ds <- bq_dataset("tides-saas-309509", "cleanscale")
 tb <- bq_dataset_query(ds,
                        query = sql,
