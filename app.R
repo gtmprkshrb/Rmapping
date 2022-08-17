@@ -77,7 +77,7 @@ ui_front <- bootstrapPage(
       width = 250,
       size = "sm",
       selectInput(
-        "Category", "Select the Category Name:",
+        "Category", "Category Name:",
         # Appending ALL to have a option to load all locations
         append("All", as.list(Category$Category), ),
         # selecting ALL as default option
@@ -175,7 +175,7 @@ server <- function(input, output) {
   
   observeEvent(input$india_boundary == "state_boundaries", {
     leafletProxy("layer_data") %>%
-      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") 
+      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>%  hideGroup(group = "state_boundaries")
   })
   
   
