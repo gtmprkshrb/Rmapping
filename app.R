@@ -19,6 +19,7 @@ library(shinycssloaders)
 library(shinyWidgets)
 library(shinythemes)
 library(markdown)
+library(googleway)
 
 
 load_dot_env()
@@ -29,8 +30,10 @@ district_data <- fromJSON(file="district.json")
 
 ward_data <- fromJSON(file = "ward.json")
 
-key <- Sys.getenv("GPS_TOKEN")
+key <- Sys.getenv("GOOGLE_MAP_GEOCODING_KEY")
 register_google(key = key)
+set_key(key = key)
+
 
 my_token <- Sys.getenv("MAPBOX_TOKEN")
 
@@ -61,10 +64,56 @@ Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
+geosearch <- basicPage(
+  HTML(paste0(" <script> 
+                function initAutocomplete() {
+
+                var autocomplete = new google.maps.places.Autocomplete(document.getElementById('address'),{types: ['geocode']});
+                autocomplete.setFields(['address_components', 'formatted_address',  'geometry', 'icon', 'name']);
+                autocomplete.addListener('place_changed', function() {
+                var place = autocomplete.getPlace();
+                if (!place.geometry) {
+                return;
+                }
+
+                var addressPretty = place.formatted_address;
+                var address = '';
+                if (place.address_components) {
+                address = [
+                (place.address_components[0] && place.address_components[0].short_name || ''),
+                (place.address_components[1] && place.address_components[1].short_name || ''),
+                (place.address_components[2] && place.address_components[2].short_name || ''),
+                (place.address_components[3] && place.address_components[3].short_name || ''),
+                (place.address_components[4] && place.address_components[4].short_name || ''),
+                (place.address_components[5] && place.address_components[5].short_name || ''),
+                (place.address_components[6] && place.address_components[6].short_name || ''),
+                (place.address_components[7] && place.address_components[7].short_name || '')
+                ].join(' ');
+                }
+                var address_number =''
+                address_number = [(place.address_components[0] && place.address_components[0].short_name || '')]
+                var coords = place.geometry.location;
+                //console.log(address);
+                Shiny.onInputChange('jsValue', address);
+                Shiny.onInputChange('jsValueAddressNumber', address_number);
+                Shiny.onInputChange('jsValuePretty', addressPretty);
+                Shiny.onInputChange('jsValueCoords', coords);});}
+                </script> 
+                <script src='https://maps.googleapis.com/maps/api/js?key=", key,"&libraries=places&callback=initAutocomplete' async defer></script>"))
+)
+
 
 ui_front <- bootstrapPage(
   theme = shinytheme("simplex"),
   div(class = "container-fluid", leafletOutput("layer_data", width = "100%", height = 600)),
+  absolutePanel(
+    top = 100, left = 30,
+    div(
+      textInput(inputId = "address", label = "Type An Address")    
+      ,textOutput(outputId = "full_address"),
+      geosearch
+    )
+  ),
   absolutePanel(
     id = "controls", class = "panel panel-default",
     draggable = TRUE, top = 225, left = "7%", #125 
@@ -110,44 +159,6 @@ logos <- awesomeIconList(
   )
 )
 
-geosearch1 <- basicPage(
-  HTML(paste0(" <script> 
-                function initAutocomplete() {
-
-                var autocomplete = new google.maps.places.Autocomplete(document.getElementById('address'),{types: ['geocode']});
-                autocomplete.setFields(['address_components', 'formatted_address',  'geometry', 'icon', 'name']);
-                autocomplete.addListener('place_changed', function() {
-                var place = autocomplete.getPlace();
-                if (!place.geometry) {
-                return;
-                }
-
-                var addressPretty = place.formatted_address;
-                var address = '';
-                if (place.address_components) {
-                address = [
-                (place.address_components[0] && place.address_components[0].short_name || ''),
-                (place.address_components[1] && place.address_components[1].short_name || ''),
-                (place.address_components[2] && place.address_components[2].short_name || ''),
-                (place.address_components[3] && place.address_components[3].short_name || ''),
-                (place.address_components[4] && place.address_components[4].short_name || ''),
-                (place.address_components[5] && place.address_components[5].short_name || ''),
-                (place.address_components[6] && place.address_components[6].short_name || ''),
-                (place.address_components[7] && place.address_components[7].short_name || '')
-                ].join(' ');
-                }
-                var address_number =''
-                address_number = [(place.address_components[0] && place.address_components[0].short_name || '')]
-                var coords = place.geometry.location;
-                //console.log(address);
-                Shiny.onInputChange('jsValue', address);
-                Shiny.onInputChange('jsValueAddressNumber', address_number);
-                Shiny.onInputChange('jsValuePretty', addressPretty);
-                Shiny.onInputChange('jsValueCoords', coords);});}
-                </script> 
-                <script src='https://maps.googleapis.com/maps/api/js?key=", key,"&libraries=places&callback=initAutocomplete' async defer></script>"))
-)
-
 
 ui <- dashboardPage(
   skin = c("green"),
@@ -156,8 +167,7 @@ ui <- dashboardPage(
   dashboardBody(
     tabItem(
       tabName = "Layer",
-      ui_front,
-      geosearch1
+      ui_front
     )
   )
 )
@@ -176,7 +186,7 @@ server <- function(input, output) {
   
   observeEvent(input$india_boundary == "state_boundaries", {
     leafletProxy("layer_data") %>%
-      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>%  hideGroup(group = "state_boundaries")
+      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>% hideGroup(group = "state_boundaries")
   })
   
   
@@ -215,7 +225,7 @@ server <- function(input, output) {
                  intensity = 20,
                  max = 100,
                  radius = 20,
-                 blur = 20, group = "HeatMap") %>% addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
+                 blur = 20, group = "HeatMap") %>%
       
       addLayersControl(
         position = "bottomleft",
@@ -223,11 +233,9 @@ server <- function(input, output) {
         overlayGroups = c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
         
-      )
-    
-    
-    
+      ) 
   })
+  
   
   observeEvent(input$india_boundary == "district_boundaries", {
     
