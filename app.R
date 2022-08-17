@@ -8,13 +8,17 @@ library(shiny)
 library(bigrquery)
 library(fontawesome)
 library(leaflet.extras)
-library(ggmap)
 library(raster)
 library(mapview)
 library(mapboxapi)
 library(dotenv)
 library(hover)
 library(rjson)
+library(shinycssloaders)
+library(shinyWidgets)
+library(shinythemes)
+library(markdown)
+
 
 load_dot_env()
 
@@ -30,12 +34,6 @@ register_google(key = key)
 my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
-
-data_cities = data.frame(
-  city = c('Tehri' ,'Hosur', 'Hubli', 'Bangalore', 'Chennai', 'Delhi', 'Mumbai'),
-  lat = c(30.3787141, 12.7378317, 15.3575775, 12.9539974, 13.0473748, 28.6921165, 19.0821978),
-  lng = c(78.4286888, 77.7626863, 75.039107, 77.6309395, 79.9288083, 76.8079346, 72.741098)
-)
 
 select_boundaries = data.frame(boundary = c("state_boundaries", "district_boundaries", "ward_boundaries"))
 
@@ -63,36 +61,23 @@ Category <- bqdata %>%
   distinct()
 
 
-
 ui_front <- bootstrapPage(
-  leafletOutput("layer_data", height = 650, width = "100%"),
+  theme = shinytheme("simplex"),
+  div(class = "container-fluid", leafletOutput("layer_data", width = "100%", height = 600)),
   absolutePanel(
-    style = "background: transparent; right: 0; ",
-    top = 125, draggable = TRUE, width = "50%",
-    checkboxInput("smooth", label = icon("list-alt", style = "color:gray;", "fa-2x")),
-    conditionalPanel(
-      condition = "input.smooth == true",
+    id = "controls", class = "panel panel-default",
+    draggable = TRUE, top = 225, left = "7%", #125 
+    right = "auto", bottom = "auto",
+    width = 0, height = 0,
+    dropdownButton(
+      label = "",
+      icon = icon("gear"),
+      status = "primary",
+      circle = TRUE,
+      width = 250,
+      size = "sm",
       selectInput(
-        width = "50%",
-        "District", "Select the District Name:",
-        # Appending ALL to have a option to load all locations
-        append("All", as.list(District$District), ),
-        # selecting ALL as default option
-        selected = "All",
-        multiple = TRUE
-      ),
-      selectInput(
-        width = "50%",
-        "State", "Select the State Name:",
-        # Appending ALL to have a option to load all locations
-        append("All", as.list(State$State), ),
-        # selecting ALL as default option
-        selected = "All",
-        multiple = TRUE
-      ),
-      selectInput(
-        width = "50%",
-        "Category", "Select the Category Name:",
+        "Category", "Category Name:",
         # Appending ALL to have a option to load all locations
         append("All", as.list(Category$Category), ),
         # selecting ALL as default option
@@ -100,13 +85,6 @@ ui_front <- bootstrapPage(
         multiple = TRUE
       ),
       selectInput(
-        width = "50%",
-        inputId = "select_city", 
-        label = "Select city",
-        choices = data_cities$city
-      ),
-      selectInput(
-        width = "50%",
         inputId = "india_boundary", 
         label = "India Boundary",
         choices = select_boundaries
@@ -185,6 +163,7 @@ ui <- dashboardPage(
 
 
 server <- function(input, output) {
+  
   #Zoom when select city
   observeEvent(input$select_city, {
     selected_city_data <- data_cities %>%
@@ -194,46 +173,14 @@ server <- function(input, output) {
       setView(lng = selected_city_data$lng, lat = selected_city_data$lat, zoom=10)
   })
   
-  observeEvent(input$india_boundary, {
-    select_boundary <- select_boundaries %>%
-      filter(boundary == input$india_boundary)
-    
+  observeEvent(input$india_boundary == "state_boundaries", {
     leafletProxy("layer_data") %>%
-      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>% hideGroup(group = "state_boundaries")
+      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>%  hideGroup(group = "state_boundaries")
   })
   
-  observeEvent(input$india_boundary, {
-    select_boundary <- select_boundaries %>%
-      filter("district_boundaries" == input$india_boundary)
-    
-    leafletProxy("layer_data") %>%
-      addGeoJSON(district_data, fillColor = "orange", fillOpacity = 0.1, weight = 3, color = "green", group = "district_boundaries") %>% hideGroup(group = "district_boundaries")
-  })
-  
-  observeEvent(input$india_boundary, {
-    select_boundary <- select_boundaries %>%
-      filter("ward_boundaries" == input$india_boundary)
-    
-    leafletProxy("layer_data") %>%
-      addGeoJSONChoropleth(ward_data, valueProperty = "yellow", group ="ward_boundaries" ) %>% hideGroup(group = "ward_boundaries")
-  })
   
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
-      dplyr::filter(
-        if ("All" %in% input$District) {
-          District != ""
-        } else {
-          District %in% input$District
-        }
-      ) %>%
-      dplyr::filter(
-        if ("All" %in% input$State) {
-          State != ""
-        } else {
-          State %in% input$State
-        }
-      ) %>%
       dplyr::filter(
         if ("All" %in% input$Category) {
           Category != ""
@@ -242,14 +189,12 @@ server <- function(input, output) {
         }
       )
     
-    leaflet(filtered_data) %>%  addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
-      addMapboxTiles(username = "mapbox", style_id = "outdoors-v11", group = "outdoors") %>%
-      addMapboxTiles(username = "mapbox", style_id = "light-v10", group = "light") %>%
-      addMapboxTiles(username = "mapbox", style_id = "dark-v10", group = "dark") %>%
-      addMapboxTiles(username = "mapbox", style_id = "satellite-v9", group = "satellite") %>%
+    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
       setView(78.9629, 20.5937, zoom = 5) %>% 
-      addFullscreenControl(pseudoFullscreen = TRUE) %>%
-      
+      addFullscreenControl(pseudoFullscreen = TRUE, position = "bottomright") %>%
+      htmlwidgets::onRender("function(el, x) {
+        L.control.zoom({ position: 'bottomright' }).addTo(this)
+    }") %>%
       addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
                         icon = ~logos[Category],
                         popup = paste0(
@@ -269,17 +214,30 @@ server <- function(input, output) {
                  intensity = 20,
                  max = 100,
                  radius = 20,
-                 blur = 20, group = "HeatMap") %>%  addSearchGoogle(searchOptions(autoCollapse = TRUE, minLength = 8)) %>%
-      
+                 blur = 20, group = "HeatMap") %>% addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
       
       addLayersControl(
-        position = "topright",
-        baseGroups = c("mapbox", "outdoors", "light", "dark", "satellite"),
+        position = "bottomleft",
+        baseGroups = c("light"),
         overlayGroups = c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
         
       )
     
+    
+    
+  })
+  
+  observeEvent(input$india_boundary == "district_boundaries", {
+    
+    leafletProxy("layer_data") %>%
+      addGeoJSON(district_data, fillColor = "orange", fillOpacity = 0.1, weight = 3, color = "green", group = "district_boundaries") %>% hideGroup(group = "district_boundaries")
+  })
+  
+  observeEvent(input$india_boundary == "ward_boundaries", {
+    
+    leafletProxy("layer_data") %>%
+      addGeoJSONChoropleth(ward_data, valueProperty = "yellow", group ="ward_boundaries") %>% hideGroup(group = "ward_boundaries")
   })
 }
 
