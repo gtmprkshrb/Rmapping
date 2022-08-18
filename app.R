@@ -162,7 +162,9 @@ ui <- dashboardPage(
 )
 
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  session$allowReconnect("force")
   
   #Zoom when select city
   observeEvent(input$select_city, {
@@ -239,6 +241,7 @@ server <- function(input, output) {
     leafletProxy("layer_data") %>%
       addGeoJSONChoropleth(ward_data, valueProperty = "yellow", group ="ward_boundaries") %>% hideGroup(group = "ward_boundaries")
   })
+  
 }
 
 shinyApp(ui, server)
