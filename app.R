@@ -164,7 +164,7 @@ ui <- dashboardPage(
 
 server <- function(input, output, session) {
   
-  session$allowReconnect("force")
+  session$allowReconnect(TRUE)
   
   #Zoom when select city
   observeEvent(input$select_city, {
