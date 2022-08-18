@@ -59,6 +59,9 @@ Category <- bqdata %>%
 
 
 ui_front <- bootstrapPage(
+  tags$head(
+    tags$meta(name = "viewport", content="width=device-width, initial-scale=1, maximum-scale=1")
+  ),
   theme = shinytheme("simplex"),
   div(class = "container-fluid", leafletOutput("layer_data", width = "100%", height = 600)),
   absolutePanel(
