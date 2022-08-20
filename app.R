@@ -32,7 +32,9 @@ my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
-select_boundaries = data.frame(boundary = c("state_boundaries", "district_boundaries", "ward_boundaries"))
+select_boundaries = 
+data.frame(boundary = 
+c("state_boundaries", "district_boundaries", "ward_boundaries"))
 
 
 bq_auth(path = "bigquery.json")
@@ -60,10 +62,12 @@ Category <- bqdata %>%
 
 ui_front <- bootstrapPage(
   tags$head(
-    tags$meta(name = "viewport", content="width=device-width, initial-scale=1, maximum-scale=1")
+    tags$meta(name = "viewport", 
+    content="width=device-width, initial-scale=1, maximum-scale=1")
   ),
   theme = shinytheme("simplex"),
-  div(class = "container-fluid", leafletOutput("layer_data", width = "100%", height = 600)),
+  div(class = "container-fluid", 
+  leafletOutput("layer_data", width = "100%", height = 600)),
   absolutePanel(
     id = "controls", class = "panel panel-default",
     draggable = TRUE, top = 225, left = "7%", #125 
@@ -164,23 +168,21 @@ ui <- dashboardPage(
 
 server <- function(input, output, session) {
   
+  # This we need to auto connect the server. 
   session$allowReconnect(TRUE)
-  
-  #Zoom when select city
-  observeEvent(input$select_city, {
-    selected_city_data <- data_cities %>%
-      filter(city == input$select_city)
-    
-    leafletProxy("layer_data") %>%
-      setView(lng = selected_city_data$lng, lat = selected_city_data$lat, zoom=10)
-  })
-  
+
+  # This function observe the input ID - india_boundary and load the data from 
+  # JSON file. 
   observeEvent(input$india_boundary == "state_boundaries", {
     leafletProxy("layer_data") %>%
-      addGeoJSON(json_data, fillColor = "red", fillOpacity = 0.1, weight = 3, group = "state_boundaries") %>%  hideGroup(group = "state_boundaries")
+      addGeoJSON(json_data, 
+      fillColor = "red", 
+      fillOpacity = 0.1, 
+      weight = 3, 
+      group = "state_boundaries") %>%  hideGroup(group = "state_boundaries")
   })
   
-  
+  # This is the main map where we render leaflet map 
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
       dplyr::filter(
@@ -191,9 +193,13 @@ server <- function(input, output, session) {
         }
       )
     
-    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
-      setView(78.9629, 20.5937, zoom = 5) %>% 
-      addFullscreenControl(pseudoFullscreen = TRUE, position = "bottomright") %>%
+    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  
+      addMapboxTiles(username = "mapbox",
+       style_id = "streets-v11", 
+       group = "mapbox") %>%
+       setView(78.9629, 20.5937, zoom = 5) %>% 
+      addFullscreenControl(pseudoFullscreen = TRUE, 
+      position = "bottomright") %>%
       htmlwidgets::onRender("function(el, x) {
         L.control.zoom({ position: 'bottomright' }).addTo(this)
     }") %>%
@@ -208,38 +214,45 @@ server <- function(input, output, session) {
                           "<b>District Name: </b>",filtered_data$District,"<br>",
                           "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
                         ),
-                        clusterOptions = markerClusterOptions()) %>% hideGroup(group = "Clustering") %>%
+                        clusterOptions = markerClusterOptions()) %>% 
+                        hideGroup(group = "Clustering") %>%
       
-      
+      # THis function we use for the representation of the heatmap
       addHeatmap(lng = ~Longitude,
                  lat = ~Latitude,
                  intensity = 20,
                  max = 100,
                  radius = 20,
-                 blur = 20, group = "HeatMap") %>% addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
+                 blur = 20, group = "HeatMap") %>% 
+                 addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
       
       addLayersControl(
         position = "bottomleft",
         baseGroups = c("light"),
-        overlayGroups = c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
+        overlayGroups = 
+        c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
         
       )
-    
-    
-    
   })
   
   observeEvent(input$india_boundary == "district_boundaries", {
     
     leafletProxy("layer_data") %>%
-      addGeoJSON(district_data, fillColor = "orange", fillOpacity = 0.1, weight = 3, color = "green", group = "district_boundaries") %>% hideGroup(group = "district_boundaries")
+      addGeoJSON(district_data, 
+      fillColor = "orange", 
+      fillOpacity = 0.1, 
+      weight = 3, 
+      color = "green", 
+      group = "district_boundaries") %>% hideGroup(group = "district_boundaries")
   })
   
   observeEvent(input$india_boundary == "ward_boundaries", {
     
     leafletProxy("layer_data") %>%
-      addGeoJSONChoropleth(ward_data, valueProperty = "yellow", group ="ward_boundaries") %>% hideGroup(group = "ward_boundaries")
+      addGeoJSONChoropleth(ward_data, 
+      valueProperty = "yellow", 
+      group ="ward_boundaries") %>% hideGroup(group = "ward_boundaries")
   })
   
 }
