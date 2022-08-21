@@ -93,8 +93,8 @@ ui_front <- bootstrapPage(
         choices = select_boundaries
       ),
       hr(),
-      checkboxInput("heat", "Heatmap", FALSE),
-      checkboxInput("cluster", "Clustering", TRUE)
+      checkboxInput("heat", "Heatmap", TRUE),
+      checkboxInput("cluster", "Clustering", FALSE)
     )
   )
 )
@@ -244,8 +244,16 @@ server <- function(input, output, session) {
   
   # This is the main map where we render leaflet map 
   output$layer_data <- renderLeaflet({
+    filtered_data <- bqdata %>%
+      dplyr::filter(
+        if ("All" %in% input$Category) {
+          Category != ""
+        } else {
+          Category %in% input$Category
+        }
+      )
     
-    leaflet(options = leafletOptions(zoomControl = FALSE)) %>%  
+    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  
       addMapboxTiles(username = "mapbox",
                      style_id = "streets-v11", 
                      group = "mapbox") %>%
@@ -255,7 +263,9 @@ server <- function(input, output, session) {
       htmlwidgets::onRender("function(el, x) {
         L.control.zoom({ position: 'bottomright' }).addTo(this)
     }") %>%
+      
       addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
+      
       addLayersControl(
         position = "bottomleft",
         baseGroups = c("light"),
