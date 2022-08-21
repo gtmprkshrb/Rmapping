@@ -37,7 +37,7 @@ select_boundaries =
 
 
 bq_auth(path = "bigquery.json")
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 500"
+sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale`"
 ds <- bq_dataset("tides-saas-309509", "cleanscale")
 tb <- bq_dataset_query(ds,
                        query = sql,
@@ -91,7 +91,10 @@ ui_front <- bootstrapPage(
         inputId = "india_boundary", 
         label = "India Boundary",
         choices = select_boundaries
-      )
+      ),
+      hr(),
+      checkboxInput("heat", "Heatmap", FALSE),
+      checkboxInput("cluster", "Clustering", TRUE)
     )
   )
 )
@@ -182,8 +185,8 @@ server <- function(input, output, session) {
     
   })
   
-  # This is the main map where we render leaflet map 
-  output$layer_data <- renderLeaflet({
+  observe({
+    
     filtered_data <- bqdata %>%
       dplyr::filter(
         if ("All" %in% input$Category) {
@@ -193,7 +196,56 @@ server <- function(input, output, session) {
         }
       )
     
-    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  
+    
+    proxy <- leafletProxy("layer_data")
+    if (input$cluster) {
+      proxy %>%  addAwesomeMarkers(lat = filtered_data$Latitude, lng = filtered_data$Longitude,
+                                   popup = paste0(
+                                     "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+                                     "<img src = ", filtered_data$Image,
+                                     ' width="100%"  height="100"', ">",
+                                     "<b>Description: </b>",filtered_data$Description,"<br>",
+                                     "<b>State Name: </b>",filtered_data$State,"<br>",
+                                     "<b>District Name: </b>",filtered_data$District,"<br>",
+                                     "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
+                                   ),
+                                   clusterOptions = markerClusterOptions()) 
+    }
+    else{
+      proxy %>% clearMarkerClusters()
+    }
+  })
+  
+  observe({
+    
+    filtered_data <- bqdata %>%
+      dplyr::filter(
+        if ("All" %in% input$Category) {
+          Category != ""
+        } else {
+          Category %in% input$Category
+        }
+      )
+    
+    
+    proxy <- leafletProxy("layer_data")
+    if (input$heat) {
+      proxy %>% addHeatmap(lng = filtered_data$Longitude,
+                             lat = filtered_data$Latitude,
+                             intensity = 20,
+                             max = 100,
+                             radius = 20,
+                             blur = 20) 
+    }
+    else{
+      proxy %>% clearHeatmap()
+    }
+  })
+  
+  # This is the main map where we render leaflet map 
+  output$layer_data <- renderLeaflet({
+    
+    leaflet(options = leafletOptions(zoomControl = FALSE)) %>%  
       addMapboxTiles(username = "mapbox",
                      style_id = "streets-v11", 
                      group = "mapbox") %>%
@@ -203,34 +255,12 @@ server <- function(input, output, session) {
       htmlwidgets::onRender("function(el, x) {
         L.control.zoom({ position: 'bottomright' }).addTo(this)
     }") %>%
-      addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
-                        icon = ~logos[Category],
-                        popup = paste0(
-                          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-                          "<img src = ", filtered_data$Image,
-                          ' width="100%"  height="100"', ">",
-                          "<b>Description: </b>",filtered_data$Description,"<br>",
-                          "<b>State Name: </b>",filtered_data$State,"<br>",
-                          "<b>District Name: </b>",filtered_data$District,"<br>",
-                          "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
-                        ),
-                        clusterOptions = markerClusterOptions()) %>% 
-      hideGroup(group = "Clustering") %>%
-      
-      # THis function we use for the representation of the heatmap
-      addHeatmap(lng = ~Longitude,
-                 lat = ~Latitude,
-                 intensity = 20,
-                 max = 100,
-                 radius = 20,
-                 blur = 20, group = "HeatMap") %>% 
       addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
-      
       addLayersControl(
         position = "bottomleft",
         baseGroups = c("light"),
         overlayGroups = 
-          c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
+          c("Clustering", "state_boundaries", "district_boundaries", "ward_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
       )
   })
