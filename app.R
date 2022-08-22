@@ -14,9 +14,8 @@ library(shinycssloaders)
 library(shinyWidgets)
 library(shinythemes)
 library(markdown)
-library(jsonlite)
 library(readr)
-library(future)
+
 
 load_dot_env()
 
