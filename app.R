@@ -34,23 +34,21 @@ tb <- bq_dataset_query(ds,
                        billing = "tides-saas-309509"
 )
 bqdata <- bq_table_download(tb)
-State <- bqdata %>%
-  dplyr::select(State) %>%
-  distinct()
-
-# List of distinct District Names
-District <- bqdata %>%
-  dplyr::select(District) %>%
-  distinct()
 
 # List of distinct Category Names
 Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
-
+# Reading all the data for Assembly level boundaries 
 json_data <- readr::read_file("AC_Boundary.json")
 
+# Reading the data for taluka
+taluka_data <- readr::read_file("Taluka.json")
+
+
+# This we are using in the UI and we are using bootstrap logic here
+# along with some CSS
 ui_front <- bootstrapPage(
   tags$head(
     tags$meta(name = "viewport", 
@@ -160,6 +158,10 @@ server <- function(input, output, session) {
   # This we need to auto connect the server. 
   session$allowReconnect(TRUE)
   
+  
+  # Here we are observing the cluster input
+  # If wr click on the cluster it tries to cluster all the data points
+  # Otherwise it will remove the marker
   observe({
     
     filtered_data <- bqdata %>%
@@ -191,6 +193,10 @@ server <- function(input, output, session) {
     }
   })
   
+  
+  # Here we are observing the heatmap input
+  # If we click on the Heatmap it shows the density of the data points
+  # Otherwise it will remove the Heatmap
   observe({
     
     filtered_data <- bqdata %>%
@@ -229,20 +235,27 @@ server <- function(input, output, session) {
         }
       )
     
-    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  
+    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>% 
+      # Here we have added the support for mapbox and we arre using there tiles to render
+      # to render on the map
       addMapboxTiles(username = "mapbox",
                      style_id = "streets-v11", 
                      group = "mapbox") %>%
       setView(78.9629, 20.5937, zoom = 5) %>% 
+      # Support for full control
       addFullscreenControl(pseudoFullscreen = TRUE, 
                            position = "bottomright") %>%
+      
+      # This function will keep the zoom in zoom out on the bottom right
       htmlwidgets::onRender("function(el, x) {
         L.control.zoom({ position: 'bottomright' }).addTo(this)
     }") %>%
       
-      addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
+      # This feature will be to search location with the help of google api
+      leaflet.extras::addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
       
-      addGeoJSONChoropleth(json_data, 
+      # This is to add assembly boundaries and to be able to popup the information
+      leaflet.extras::addGeoJSONChoropleth(json_data, 
                            valueProperty = "AREASQMI",
                            scale = c("white", "red"),
                            mode = "q",
@@ -261,15 +274,29 @@ server <- function(input, output, session) {
                              bringToFront = TRUE, sendToBack = TRUE),
                            pathOptions = pathOptions(
                              showMeasurements = TRUE,
-                             measurementOptions = measurePathOptions(imperial = TRUE)),
-                 group = "district_boundaries") %>% hideGroup(group = "district_boundaries") %>%
-                
+                             measurementOptions =
+                              measurePathOptions(imperial = TRUE)),
+                 group = "district_boundaries") %>%
+                  hideGroup(group = "district_boundaries") %>%
       
-      addLayersControl(
+      leaflet.extras::addGeoJSONv2(taluka_data, 
+                 fillColor = "red", 
+                 fillOpacity = 0.1, 
+                 weight = 3,
+                 labelProperty = "name",
+                 popupProperty = propstoHTMLTable(
+                   props = c("name", "description", "altitudeMode", "extrude"),
+                   table.attrs = list(class = "table table-striped table-bordered"),
+                   drop.na = TRUE
+                 ),
+                 group = "taluka") %>% 
+                
+      # This is to add control layers on the map
+      leaflet::addLayersControl(
         position = "bottomleft",
         baseGroups = c("light"),
         overlayGroups = 
-          c("district_boundaries"),
+          c("district_boundaries", "taluka"),
         options = layersControlOptions(collapsed=TRUE)
       )
   })
