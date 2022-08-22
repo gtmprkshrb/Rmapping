@@ -1,22 +1,20 @@
-
+library(RPostgres)
 library(shinydashboard)
 library(leaflet)
 library(dplyr)
 library(shiny)
-library(bigrquery)
 library(fontawesome)
 library(leaflet.extras)
 library(mapview)
 library(mapboxapi)
 library(ggmap)
 library(dotenv)
+library(DBI)
 library(shinycssloaders)
 library(shinyWidgets)
 library(shinythemes)
 library(markdown)
 library(readr)
-
-
 load_dot_env()
 
 json_data <- readr::read_file("state.json")
@@ -31,45 +29,58 @@ my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
-select_boundaries = 
-  data.frame(boundary = 
-               c("state_boundaries", "district_boundaries", "ward_boundaries"))
+# database name
+db <- Sys.getenv("DATABASE")
+# database host
+host_db <- Sys.getenv("DB_HOST")
+# database port no.
+db_port <- Sys.getenv("DB_PORT")
+# database user name
+db_user <- Sys.getenv("DB_USER")
+# database password
+db_password <- Sys.getenv("DB_PASSWORD")
 
 
-bq_auth(path = "bigquery.json")
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale` limit 500"
-ds <- bq_dataset("tides-saas-309509", "cleanscale")
-tb <- bq_dataset_query(ds,
-                       query = sql,
-                       billing = "tides-saas-309509"
+con <- dbConnect(
+  RPostgres::Postgres(),
+  dbname = db,
+  host = host_db,
+  port = db_port,
+  user = db_user,
+  password = db_password
 )
-bqdata <- bq_table_download(tb)
+
+bqdata <- dbGetQuery(con, "SELECT * FROM cleanscale")
+
 State <- bqdata %>%
   dplyr::select(State) %>%
   distinct()
 
-# List of distinct District Names
+# list of distinct District Names
 District <- bqdata %>%
   dplyr::select(District) %>%
   distinct()
 
-# List of distinct Category Names
+# list of distinct Category Names
 Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
-
 ui_front <- bootstrapPage(
   tags$head(
-    tags$meta(name = "viewport", 
-              content="width=device-width, initial-scale=1, maximum-scale=1")
+    tags$meta(
+      name = "viewport",
+      content = "width=device-width, initial-scale=1, maximum-scale=1"
+    )
   ),
   theme = shinytheme("simplex"),
-  div(class = "container-fluid", 
-      leafletOutput("layer_data", width = "100%", height = 600)),
+  div(
+    class = "container-fluid",
+    leafletOutput("layer_data", width = "100%", height = 600)
+  ),
   absolutePanel(
     id = "controls", class = "panel panel-default",
-    draggable = TRUE, top = 225, left = "7%", #125 
+    draggable = TRUE, top = 225, left = "7%", # 125
     right = "auto", bottom = "auto",
     width = 0, height = 0,
     dropdownButton(
@@ -88,7 +99,7 @@ ui_front <- bootstrapPage(
         multiple = TRUE
       ),
       selectInput(
-        inputId = "india_boundary", 
+        inputId = "india_boundary",
         label = "India Boundary",
         choices = select_boundaries
       )
@@ -113,9 +124,8 @@ logos <- awesomeIconList(
 )
 
 geosearch1 <- basicPage(
-  HTML(paste0(" <script> 
+  HTML(paste0(" <script>
                 function initAutocomplete() {
-
                 var autocomplete = new google.maps.places.Autocomplete(document.getElementById('address'),{types: ['geocode']});
                 autocomplete.setFields(['address_components', 'formatted_address',  'geometry', 'icon', 'name']);
                 autocomplete.addListener('place_changed', function() {
@@ -123,7 +133,6 @@ geosearch1 <- basicPage(
                 if (!place.geometry) {
                 return;
                 }
-
                 var addressPretty = place.formatted_address;
                 var address = '';
                 if (place.address_components) {
@@ -146,8 +155,8 @@ geosearch1 <- basicPage(
                 Shiny.onInputChange('jsValueAddressNumber', address_number);
                 Shiny.onInputChange('jsValuePretty', addressPretty);
                 Shiny.onInputChange('jsValueCoords', coords);});}
-                </script> 
-                <script src='https://maps.googleapis.com/maps/api/js?key=", key,"&libraries=places&callback=initAutocomplete' async defer></script>"))
+                </script>
+                <script src='https://maps.googleapis.com/maps/api/js?key=", key, "&libraries=places&callback=initAutocomplete' async defer></script>"))
 )
 
 
@@ -166,23 +175,24 @@ ui <- dashboardPage(
 
 
 server <- function(input, output, session) {
-  
-  # This we need to auto connect the server. 
+
+  # This we need to auto connect the server.
   session$allowReconnect(TRUE)
-  
-  # This function observe the input ID - india_boundary and load the data from 
-  # JSON file. 
+
+  # This function observe the input ID - india_boundary and load the data from
+  # JSON file.
   observeEvent(input$india_boundary == "state_boundaries", {
     leafletProxy("layer_data") %>%
-      addGeoJSON(json_data, 
-                 fillColor = "red", 
-                 fillOpacity = 0.1, 
-                 weight = 3, 
-                 group = "state_boundaries") %>% groupOptions("state_boundaries", zoomLevels = 6:20)   
-    
+      addGeoJSON(json_data,
+        fillColor = "red",
+        fillOpacity = 0.1,
+        weight = 3,
+        group = "state_boundaries"
+      ) %>%
+      groupOptions("state_boundaries", zoomLevels = 6:20)
   })
-  
-  # This is the main map where we render leaflet map 
+
+  # This is the main map where we render leaflet map
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
       dplyr::filter(
@@ -192,68 +202,75 @@ server <- function(input, output, session) {
           Category %in% input$Category
         }
       )
-    
-    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  
-      addMapboxTiles(username = "mapbox",
-                     style_id = "streets-v11", 
-                     group = "mapbox") %>%
-      setView(78.9629, 20.5937, zoom = 5) %>% 
-      addFullscreenControl(pseudoFullscreen = TRUE, 
-                           position = "bottomright") %>%
+
+    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%
+      addMapboxTiles(
+        username = "mapbox",
+        style_id = "streets-v11",
+        group = "mapbox"
+      ) %>%
+      setView(78.9629, 20.5937, zoom = 5) %>%
+      addFullscreenControl(
+        pseudoFullscreen = TRUE,
+        position = "bottomright"
+      ) %>%
       htmlwidgets::onRender("function(el, x) {
         L.control.zoom({ position: 'bottomright' }).addTo(this)
     }") %>%
-      addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
-                        icon = ~logos[Category],
-                        popup = paste0(
-                          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-                          "<img src = ", filtered_data$Image,
-                          ' width="100%"  height="100"', ">",
-                          "<b>Description: </b>",filtered_data$Description,"<br>",
-                          "<b>State Name: </b>",filtered_data$State,"<br>",
-                          "<b>District Name: </b>",filtered_data$District,"<br>",
-                          "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
-                        ),
-                        clusterOptions = markerClusterOptions()) %>% 
+      addAwesomeMarkers(
+        group = "Clustering", lat = ~Latitude, lng = ~Longitude,
+        icon = ~ logos[Category],
+        popup = paste0(
+          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+          "<img src = ", filtered_data$Image,
+          ' width="100%"  height="100"', ">",
+          "<b>Description: </b>", filtered_data$Description, "<br>",
+          "<b>State Name: </b>", filtered_data$State, "<br>",
+          "<b>District Name: </b>", filtered_data$District, "<br>",
+          "<b>Village Name: </b>", filtered_data$VillageName, "<br>"
+        ),
+        clusterOptions = markerClusterOptions()
+      ) %>%
       hideGroup(group = "Clustering") %>%
-      
       # THis function we use for the representation of the heatmap
-      addHeatmap(lng = ~Longitude,
-                 lat = ~Latitude,
-                 intensity = 20,
-                 max = 100,
-                 radius = 20,
-                 blur = 20, group = "HeatMap") %>% 
-      addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
-      
+      addHeatmap(
+        lng = ~Longitude,
+        lat = ~Latitude,
+        intensity = 20,
+        max = 100,
+        radius = 20,
+        blur = 20, group = "HeatMap"
+      ) %>%
+      addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>%
       addLayersControl(
         position = "bottomleft",
         baseGroups = c("light"),
-        overlayGroups = 
+        overlayGroups =
           c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
-        options = layersControlOptions(collapsed=TRUE)
+        options = layersControlOptions(collapsed = TRUE)
       )
   })
-  
+
   observeEvent(input$india_boundary == "district_boundaries", {
-    
     leafletProxy("layer_data") %>%
-      addGeoJSON(district_data, 
-                 fillColor = "orange", 
-                 fillOpacity = 0.1, 
-                 weight = 3, 
-                 color = "green", 
-                 group = "district_boundaries") %>% groupOptions("district_boundaries", zoomLevels = 9:20) 
+      addGeoJSON(district_data,
+        fillColor = "orange",
+        fillOpacity = 0.1,
+        weight = 3,
+        color = "green",
+        group = "district_boundaries"
+      ) %>%
+      groupOptions("district_boundaries", zoomLevels = 9:20)
   })
-  
+
   observeEvent(input$india_boundary == "ward_boundaries", {
-    
     leafletProxy("layer_data") %>%
-      addGeoJSONChoropleth(ward_data, 
-                           valueProperty = "yellow", 
-                           group ="ward_boundaries") %>% hideGroup(group = "ward_boundaries")
+      addGeoJSONChoropleth(ward_data,
+        valueProperty = "yellow",
+        group = "ward_boundaries"
+      ) %>%
+      hideGroup(group = "ward_boundaries")
   })
-  
 }
 
 shinyApp(ui, server)
