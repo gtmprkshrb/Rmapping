@@ -14,6 +14,7 @@ This repository contains the sample codes from our learning so far with R leafle
 - [R documentation](https://www.rdocumentation.org/search?q=fluidRow)
 - [Leafletjs documentation](https://leafletjs.com/)
 - [Community blogs](https://www.r-bloggers.com/)
+- [Mobile View](https://shiny.rstudio.com/articles/reconnecting.html)
 
 ## Tutorial Videos
 

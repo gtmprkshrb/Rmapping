@@ -1,32 +1,34 @@
-# install.packages('raster', repos='https://rspatial.r-universe.dev')
-
 library(RPostgres)
-library(maps)
-library(sf)
 library(shinydashboard)
 library(leaflet)
 library(dplyr)
 library(shiny)
-library(googleway)
 library(fontawesome)
 library(leaflet.extras)
-library(magrittr)
-library(ggmap)
-library(raster)
 library(mapview)
 library(mapboxapi)
+library(ggmap)
 library(dotenv)
 library(DBI)
-
+library(shinycssloaders)
+library(shinyWidgets)
+library(shinythemes)
+library(markdown)
+library(readr)
 load_dot_env()
 
+json_data <- readr::read_file("state.json")
+
+district_data <- readr::read_file("district.json")
+ward_data <- readr::read_file("ward.json")
+
 key <- Sys.getenv("GPS_TOKEN")
-set_key(key = key)
 register_google(key = key)
 
 my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
+
 
 # database name
 db <- "_95263123ff933d46"
@@ -43,6 +45,7 @@ con <- dbConnect(RPostgres::Postgres(), dbname = db, host = host_db, port = db_p
 
 
 bqdata <- dbGetQuery(con, "SELECT * FROM cleanscale")
+
 State <- bqdata %>%
   dplyr::select(State) %>%
   distinct()
@@ -57,59 +60,57 @@ Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
-ui_front <- fluidPage(
-  fluidRow(
-    fluidRow(
-      column(
-        6,
-        leafletOutput("layer_data", height = 500, width = "100%")
+ui_front <- bootstrapPage(
+  tags$head(
+    tags$meta(name = "viewport", 
+              content="width=device-width, initial-scale=1, maximum-scale=1")
+  ),
+  theme = shinytheme("simplex"),
+  div(class = "container-fluid", 
+      leafletOutput("layer_data", width = "100%", height = 600)),
+  absolutePanel(
+    id = "controls", class = "panel panel-default",
+    draggable = TRUE, top = 225, left = "7%", #125 
+    right = "auto", bottom = "auto",
+    width = 0, height = 0,
+    dropdownButton(
+      label = "",
+      icon = icon("gear"),
+      status = "primary",
+      circle = TRUE,
+      width = 250,
+      size = "sm",
+      selectInput(
+        "Category", "Category Name:",
+        # Appending ALL to have a option to load all locations
+        append("All", as.list(Category$Category), ),
+        # selecting ALL as default option
+        selected = "All",
+        multiple = TRUE
       ),
-      column(
-        4,
-        selectInput(
-          "District", "Select the District Name:",
-          # Appending ALL to have a option to load all locations
-          append("All", as.list(District$District), ),
-          # selecting ALL as default option
-          selected = "All",
-          multiple = TRUE
-        ),
-        selectInput(
-          "State", "Select the State Name:",
-          # Appending ALL to have a option to load all locations
-          append("All", as.list(State$State), ),
-          # selecting ALL as default option
-          selected = "All",
-          multiple = TRUE
-        ),
-        selectInput(
-          "Category", "Select the Category Name:",
-          # Appending ALL to have a option to load all locations
-          append("All", as.list(Category$Category), ),
-          # selecting ALL as default option
-          selected = "All",
-          multiple = TRUE
-        )
+      selectInput(
+        inputId = "india_boundary", 
+        label = "India Boundary",
+        choices = select_boundaries
+
       )
     )
   )
 )
 
+
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
     icon = "road",
-    markerColor = "white",
-    library = "fa"
+    markerColor = "black"
   ),
   "Garbage Collection" = makeAwesomeIcon(
     icon = "trash",
-    markerColor = "green",
-    library = "fa"
+    markerColor = "green"
   ),
   "Air Quality" = makeAwesomeIcon(
     icon = "cloud",
-    markerColor = "blue",
-    library = "fa"
+    markerColor = "blue"
   )
 )
 
@@ -166,25 +167,26 @@ ui <- dashboardPage(
 )
 
 
-
-
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  # This we need to auto connect the server. 
+  session$allowReconnect(TRUE)
+  
+  # This function observe the input ID - india_boundary and load the data from 
+  # JSON file. 
+  observeEvent(input$india_boundary == "state_boundaries", {
+    leafletProxy("layer_data") %>%
+      addGeoJSON(json_data, 
+                 fillColor = "red", 
+                 fillOpacity = 0.1, 
+                 weight = 3, 
+                 group = "state_boundaries") %>% groupOptions("state_boundaries", zoomLevels = 6:20)   
+    
+  })
+  
+  # This is the main map where we render leaflet map 
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
-      dplyr::filter(
-        if ("All" %in% input$District) {
-          District != ""
-        } else {
-          District %in% input$District
-        }
-      ) %>%
-      dplyr::filter(
-        if ("All" %in% input$State) {
-          State != ""
-        } else {
-          State %in% input$State
-        }
-      ) %>%
       dplyr::filter(
         if ("All" %in% input$Category) {
           Category != ""
@@ -193,111 +195,67 @@ server <- function(input, output) {
         }
       )
 
-    leaflet(filtered_data) %>%
-      addMapboxTiles(username = "mapbox", style_id = "streets-v11", group = "mapbox") %>%
-      addMapboxTiles(username = "mapbox", style_id = "outdoors-v11", group = "outdoors") %>%
-      addMapboxTiles(username = "mapbox", style_id = "light-v10", group = "light") %>%
-      addMapboxTiles(username = "mapbox", style_id = "dark-v10", group = "dark") %>%
-      addMapboxTiles(username = "mapbox", style_id = "satellite-v9", group = "satellite") %>%
-      setView(78.9629, 20.5937, zoom = 4) %>%
-      addAwesomeMarkers(
-        group = "Clustering", lat = ~Latitude, lng = ~Longitude,
-        icon = ~ logos[Category],
-        popup = paste0(
-          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-          "<img src = ", filtered_data$Image,
-          ' width="100%"  height="100"', ">",
-          "<p> <b>Category: </b>",
-          filtered_data$Category,
-          "</p>",
-          "<p> <b>Description: </b>",
-          filtered_data$Description,
-          "</p>",
-          "<p> <b>State Name: </b>",
-          filtered_data$State,
-          "</p>",
-          "<p> <b>District Name: </b>",
-          filtered_data$District,
-          "</p>",
-          "<p> <b>Address: </b>",
-          filtered_data$Address,
-          "</p>",
-          "<p> <b>Pincode: </b>",
-          filtered_data$Pincode,
-          "</p>",
-          "<p> <b>Village Name: </b>",
-          filtered_data$VillageName,
-          "</p>",
-          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
-          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
-          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
-          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
-          "<p> <b>Ward Number: </b>",
-          filtered_data$WardNumber,
-          "</p>",
-          "<p> <b>Taluk Name: </b>",
-          filtered_data$TalukName,
-          "</p>"
-        ),
-        clusterOptions = markerClusterOptions()
-      ) %>%
-      addAwesomeMarkers(
-        group = "Markers",
-        lat = ~Latitude, lng = ~Longitude,
-        icon = ~ logos[Category],
-        popup = paste0(
-          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-          "<img src = ", filtered_data$Image,
-          ' width="100%"  height="100"', ">",
-          "<p> <b>Category: </b>",
-          filtered_data$Category,
-          "</p>",
-          "<p> <b>Description: </b>",
-          filtered_data$Description,
-          "</p>",
-          "<p> <b>State Name: </b>",
-          filtered_data$State,
-          "</p>",
-          "<p> <b>District Name: </b>",
-          filtered_data$District,
-          "</p>",
-          "<p> <b>Address: </b>",
-          filtered_data$Address,
-          "</p>",
-          "<p> <b>Pincode: </b>",
-          filtered_data$Pincode,
-          "</p>",
-          "<p> <b>Village Name: </b>",
-          filtered_data$VillageName,
-          "</p>",
-          "<p> <b>Village ID: </b>", filtered_data$VillageID, "</p>",
-          "<p> <b>WardName: </b>", filtered_data$WardName, "</p>",
-          "<p> <b>Longitude: </b>", filtered_data$Longitude, "</p>",
-          "<p> <b>Latitude: </b>", filtered_data$Latitude, "</p>",
-          "<p> <b>Ward Number: </b>",
-          filtered_data$WardNumber,
-          "</p>",
-          "<p> <b>Taluk Name: </b>",
-          filtered_data$TalukName,
-          "</p>"
-        )
-      ) %>%
-      addHeatmap(
-        lng = ~Longitude,
-        lat = ~Latitude,
-        intensity = 20,
-        max = 100,
-        radius = 20,
-        blur = 20, group = "HeatMap"
-      ) %>%
-      addSearchGoogle(searchOptions(autoCollapse = TRUE, minLength = 8)) %>%
+    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%  
+      addMapboxTiles(username = "mapbox",
+                     style_id = "streets-v11", 
+                     group = "mapbox") %>%
+      setView(78.9629, 20.5937, zoom = 5) %>% 
+      addFullscreenControl(pseudoFullscreen = TRUE, 
+                           position = "bottomright") %>%
+      htmlwidgets::onRender("function(el, x) {
+        L.control.zoom({ position: 'bottomright' }).addTo(this)
+    }") %>%
+      addAwesomeMarkers(group = "Clustering", lat = ~Latitude, lng = ~Longitude,
+                        icon = ~logos[Category],
+                        popup = paste0(
+                          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+                          "<img src = ", filtered_data$Image,
+                          ' width="100%"  height="100"', ">",
+                          "<b>Description: </b>",filtered_data$Description,"<br>",
+                          "<b>State Name: </b>",filtered_data$State,"<br>",
+                          "<b>District Name: </b>",filtered_data$District,"<br>",
+                          "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
+                        ),
+                        clusterOptions = markerClusterOptions()) %>% 
+      hideGroup(group = "Clustering") %>%
+      
+      # THis function we use for the representation of the heatmap
+      addHeatmap(lng = ~Longitude,
+                 lat = ~Latitude,
+                 intensity = 20,
+                 max = 100,
+                 radius = 20,
+                 blur = 20, group = "HeatMap") %>% 
+      addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
+      
       addLayersControl(
-        position = "topright",
-        baseGroups = c("mapbox", "outdoors", "light", "dark", "satellite"),
-        overlayGroups = c("Clustering", "HeatMap", "geo_boundraies", "Markers"),
-        options = layersControlOptions(collapsed = TRUE)
+        position = "bottomleft",
+        baseGroups = c("light"),
+        overlayGroups = 
+          c("Clustering", "HeatMap", "state_boundaries", "district_boundaries", "ward_boundaries"),
+        options = layersControlOptions(collapsed=TRUE)
       )
   })
+  
+  observeEvent(input$india_boundary == "district_boundaries", {
+    
+    leafletProxy("layer_data") %>%
+      addGeoJSON(district_data, 
+                 fillColor = "orange", 
+                 fillOpacity = 0.1, 
+                 weight = 3, 
+                 color = "green", 
+                 group = "district_boundaries") %>% groupOptions("district_boundaries", zoomLevels = 9:20) 
+  })
+  
+  observeEvent(input$india_boundary == "ward_boundaries", {
+    
+    leafletProxy("layer_data") %>%
+      addGeoJSONChoropleth(ward_data, 
+                           valueProperty = "yellow", 
+                           group ="ward_boundaries") %>% hideGroup(group = "ward_boundaries")
+  })
+  
 }
 
 shinyApp(ui, server)
