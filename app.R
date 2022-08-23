@@ -40,9 +40,6 @@ Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
-# Reading all the data for Assembly level boundaries 
-json_data <- readr::read_file("AC_Boundary.json")
-
 # Reading the data for taluka
 taluka_data <- readr::read_file("Taluka.json")
 
@@ -278,25 +275,13 @@ server <- function(input, output, session) {
                               measurePathOptions(imperial = TRUE)),
                  group = "district_boundaries") %>%
                   hideGroup(group = "district_boundaries") %>%
-      
-      leaflet.extras::addGeoJSONv2(taluka_data, 
-                 fillColor = "red", 
-                 fillOpacity = 0.1, 
-                 weight = 3,
-                 labelProperty = "name",
-                 popupProperty = propstoHTMLTable(
-                   props = c("name", "description", "altitudeMode", "extrude"),
-                   table.attrs = list(class = "table table-striped table-bordered"),
-                   drop.na = TRUE
-                 ),
-                 group = "taluka") %>% 
                 
       # This is to add control layers on the map
       leaflet::addLayersControl(
         position = "bottomleft",
         baseGroups = c("light"),
         overlayGroups = 
-          c("district_boundaries", "taluka"),
+          c("district_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
       )
   })
