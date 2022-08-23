@@ -40,9 +40,8 @@ Category <- bqdata %>%
   dplyr::select(Category) %>%
   distinct()
 
-# Reading the data for taluka
-taluka_data <- readr::read_file("Taluka.json")
-
+# Reading all the data for Assembly level boundaries 
+json_data <- readr::read_file("AC_Boundary.json")
 
 # This we are using in the UI and we are using bootstrap logic here
 # along with some CSS
@@ -260,7 +259,7 @@ server <- function(input, output, session) {
                            padding = c(0.2, 0),
                            labelProperty = "name",
                            popupProperty = propstoHTMLTable(
-                             props = c("name", "description"),
+                             props = c("name", "description", "altitudeMode", "extrude"),
                              table.attrs = list(class = "table table-striped table-bordered"),
                              drop.na = TRUE
                            ),
