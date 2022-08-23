@@ -280,7 +280,7 @@ server <- function(input, output, session) {
         position = "bottomleft",
         baseGroups = c("light"),
         overlayGroups = 
-          c("district_boundaries", "taluka"),
+          c("district_boundaries"),
         options = layersControlOptions(collapsed=TRUE)
       )
   })
