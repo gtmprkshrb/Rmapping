@@ -237,6 +237,7 @@ server <- function(input, output, session) {
       addMapboxTiles(username = "mapbox",
                      style_id = "streets-v11", 
                      group = "mapbox") %>%
+      addResetMapButton() %>%
       setView(78.9629, 20.5937, zoom = 5) %>% 
       # Support for full control
       addFullscreenControl(pseudoFullscreen = TRUE, 
