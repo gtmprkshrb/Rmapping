@@ -94,7 +94,7 @@ ui_front <- bootstrapPage(
       ),
       hr(),
       checkboxInput("heat", "Heatmap", TRUE),
-      checkboxInput("cluster", "Clustering", FALSE)
+      checkboxInput("cluster", "Clustering", TRUE)
     )
   )
 )
@@ -193,13 +193,9 @@ server <- function(input, output, session) {
         lat = filtered_data$lat,
         lng = filtered_data$long,
         popup = paste0(
-          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-          "<img src = ", filtered_data$Image,
-          ' width="100%"  height="100"', ">",
-          "<b>Description: </b>", filtered_data$Description, "<br>",
-          "<b>State Name: </b>", filtered_data$State, "<br>",
-          "<b>District Name: </b>", filtered_data$District, "<br>",
-          "<b>Village Name: </b>", filtered_data$VillageName, "<br>"
+          "<b>Address: </b>", filtered_data$address, "<br>",
+          "<b>City Name: </b>", filtered_data$city, "<br>",
+          "<b>State Name: </b>", filtered_data$state, "<br>"
         ),
         clusterOptions = markerClusterOptions()
       )
@@ -297,9 +293,9 @@ server <- function(input, output, session) {
       # This is to add control layers on the map
       leaflet::addLayersControl(
         position = "bottomleft",
-        baseGroups = c("light"),
+        baseGroups = c("Light"),
         overlayGroups =
-          c("district_boundaries"),
+          c("District Boundaries"),
         options = layersControlOptions(collapsed = TRUE)
       )
   })
