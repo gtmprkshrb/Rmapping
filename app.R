@@ -47,12 +47,14 @@ con <- dbConnect(
   password = db_password
 )
 
-bqdata <- dbGetQuery(con, 'SELECT *, CAST(latitude AS FLOAT8) as lat,CAST(longitude AS FLOAT8) as long  FROM "tabLocations"')
+bqdata <- dbGetQuery(con, 'WITH events AS (SELECT title, type, category, status, description, location FROM "tabEvents" WHERE location IS NOT NULL and title IS NOT NULL),
+locations AS (SELECT name, CAST(latitude AS FLOAT8) AS lat, CAST(longitude AS FLOAT8) AS long, address, city, state, district FROM "tabLocations")
+SELECT * FROM events LEFT JOIN locations ON location = name')
 
 
-# List of distinct state Names
-state <- bqdata %>%
-  dplyr::select(state) %>%
+# List of distinct category Names
+category <- bqdata %>%
+  dplyr::select(category) %>%
   distinct()
 
 # Reading all the data for Assembly level boundaries
@@ -85,9 +87,9 @@ ui_front <- bootstrapPage(
       width = 250,
       size = "sm",
       selectInput(
-        "state", "State Name:",
+        "category", "Category Name:",
         # Appending ALL to have a option to load all locations
-        append("All", as.list(state$state), ),
+        append("All", as.list(category$category), ),
         # selecting ALL as default option
         selected = "All",
         multiple = TRUE
@@ -180,10 +182,10 @@ server <- function(input, output, session) {
   observe({
     filtered_data <- bqdata %>%
       dplyr::filter(
-        if ("All" %in% input$state) {
-          state != ""
+        if ("All" %in% input$category) {
+          category != ""
         } else {
-          state %in% input$state
+          category %in% input$category
         }
       )
 
@@ -211,10 +213,10 @@ server <- function(input, output, session) {
   observe({
     filtered_data <- bqdata %>%
       dplyr::filter(
-        if ("All" %in% input$state) {
-          state != ""
+        if ("All" %in% input$category) {
+          category != ""
         } else {
-          state %in% input$state
+          category %in% input$category
         }
       )
     proxy <- leafletProxy("layer_data")
@@ -236,10 +238,10 @@ server <- function(input, output, session) {
   output$layer_data <- renderLeaflet({
     filtered_data <- bqdata %>%
       dplyr::filter(
-        if ("All" %in% input$state) {
-          state != ""
+        if ("All" %in% input$category) {
+          category != ""
         } else {
-          state %in% input$state
+          category %in% input$category
         }
       )
     leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%
