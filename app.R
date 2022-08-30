@@ -1,4 +1,4 @@
-
+library(RPostgres)
 library(shinydashboard)
 library(leaflet)
 library(dplyr)
@@ -15,6 +15,7 @@ library(shinyWidgets)
 library(shinythemes)
 library(markdown)
 library(readr)
+library(DBI)
 
 
 load_dot_env()
@@ -26,36 +27,49 @@ my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
-bq_auth(path = "bigquery.json")
-sql <- "SELECT *  FROM `tides-saas-309509.917302307943.cleanscale`"
-ds <- bq_dataset("tides-saas-309509", "cleanscale")
-tb <- bq_dataset_query(ds,
-                       query = sql,
-                       billing = "tides-saas-309509"
+# database name
+db <- Sys.getenv("DATABASE")
+# database host
+host_db <- Sys.getenv("DB_HOST")
+# database port no.
+db_port <- Sys.getenv("DB_PORT")
+# database user name
+db_user <- Sys.getenv("DB_USER")
+# database password
+db_password <- Sys.getenv("DB_PASSWORD")
+
+
+con <- dbConnect(
+  RPostgres::Postgres(),
+  dbname = db,
+  host = host_db,
+  port = db_port,
+  user = db_user,
+  password = db_password
 )
-bqdata <- bq_table_download(tb)
 
-# List of distinct Category Names
-Category <- bqdata %>%
-  dplyr::select(Category) %>%
-  distinct()
+bqdata <- dbGetQuery(con, 'SELECT *, CAST(latitude AS FLOAT8) as lat,CAST(longitude AS FLOAT8) as long  FROM "tabLocations"')
 
-# Reading all the data for Assembly level boundaries 
+# Reading all the data for Assembly level boundaries
 json_data <- readr::read_file("AC_Boundary.json")
 
 # This we are using in the UI and we are using bootstrap logic here
 # along with some CSS
 ui_front <- bootstrapPage(
   tags$head(
-    tags$meta(name = "viewport", 
-              content="width=device-width, initial-scale=1, maximum-scale=1")
+    tags$meta(
+      name = "viewport",
+      content = "width=device-width, initial-scale=1, maximum-scale=1"
+    )
   ),
   theme = shinytheme("simplex"),
-  div(class = "container-fluid", 
-      leafletOutput("layer_data", width = "100%", height = 600)),
+  div(
+    class = "container-fluid",
+    leafletOutput("layer_data", width = "100%", height = 600)
+  ),
   absolutePanel(
     id = "controls", class = "panel panel-default",
-    draggable = TRUE, top = 225, left = "7%", #125 
+    draggable = TRUE, top = 225, left = "7%", # 125
     right = "auto", bottom = "auto",
     width = 0, height = 0,
     dropdownButton(
@@ -65,14 +79,6 @@ ui_front <- bootstrapPage(
       circle = TRUE,
       width = 250,
       size = "sm",
-      selectInput(
-        "Category", "Category Name:",
-        # Appending ALL to have a option to load all locations
-        append("All", as.list(Category$Category), ),
-        # selecting ALL as default option
-        selected = "All",
-        multiple = TRUE
-      ),
       hr(),
       checkboxInput("heat", "Heatmap", TRUE),
       checkboxInput("cluster", "Clustering", FALSE)
@@ -97,7 +103,7 @@ logos <- awesomeIconList(
 )
 
 geosearch1 <- basicPage(
-  HTML(paste0(" <script> 
+  HTML(paste0(" <script>
                 function initAutocomplete() {
 
                 var autocomplete = new google.maps.places.Autocomplete(document.getElementById('address'),{types: ['geocode']});
@@ -130,8 +136,8 @@ geosearch1 <- basicPage(
                 Shiny.onInputChange('jsValueAddressNumber', address_number);
                 Shiny.onInputChange('jsValuePretty', addressPretty);
                 Shiny.onInputChange('jsValueCoords', coords);});}
-                </script> 
-                <script src='https://maps.googleapis.com/maps/api/js?key=", key,"&libraries=places&callback=initAutocomplete' async defer></script>"))
+                </script>
+                <script src='https://maps.googleapis.com/maps/api/js?key=", key, "&libraries=places&callback=initAutocomplete' async defer></script>"))
 )
 
 
@@ -150,139 +156,118 @@ ui <- dashboardPage(
 
 
 server <- function(input, output, session) {
-  
-  # This we need to auto connect the server. 
+
+  # This we need to auto connect the server.
   session$allowReconnect(TRUE)
-  
-  
+
+
   # Here we are observing the cluster input
   # If wr click on the cluster it tries to cluster all the data points
   # Otherwise it will remove the marker
   observe({
-    
     filtered_data <- bqdata %>%
-      dplyr::filter(
-        if ("All" %in% input$Category) {
-          Category != ""
-        } else {
-          Category %in% input$Category
-        }
-      )
-    
-    
+      dplyr::filter()
+
     proxy <- leafletProxy("layer_data")
     if (input$cluster) {
-      proxy %>%  addAwesomeMarkers(lat = filtered_data$Latitude, lng = filtered_data$Longitude,
-                                   popup = paste0(
-                                     "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
-                                     "<img src = ", filtered_data$Image,
-                                     ' width="100%"  height="100"', ">",
-                                     "<b>Description: </b>",filtered_data$Description,"<br>",
-                                     "<b>State Name: </b>",filtered_data$State,"<br>",
-                                     "<b>District Name: </b>",filtered_data$District,"<br>",
-                                     "<b>Village Name: </b>",filtered_data$VillageName, "<br>"
-                                   ),
-                                   clusterOptions = markerClusterOptions()) 
-    }
-    else{
+      proxy %>% addAwesomeMarkers(
+        lat = filtered_data$lat,
+        lng = filtered_data$long,
+        popup = paste0(
+          "<p> <b>Heading: </b>", filtered_data$Heading, "</p>",
+          "<img src = ", filtered_data$Image,
+          ' width="100%"  height="100"', ">",
+          "<b>Description: </b>", filtered_data$Description, "<br>",
+          "<b>State Name: </b>", filtered_data$State, "<br>",
+          "<b>District Name: </b>", filtered_data$District, "<br>",
+          "<b>Village Name: </b>", filtered_data$VillageName, "<br>"
+        ),
+        clusterOptions = markerClusterOptions()
+      )
+    } else {
       proxy %>% clearMarkerClusters()
     }
   })
-  
-  
+
+
   # Here we are observing the heatmap input
   # If we click on the Heatmap it shows the density of the data points
   # Otherwise it will remove the Heatmap
   observe({
-    
-    filtered_data <- bqdata %>%
-      dplyr::filter(
-        if ("All" %in% input$Category) {
-          Category != ""
-        } else {
-          Category %in% input$Category
-        }
-      )
-    
-    
+    filtered_data <- bqdata
     proxy <- leafletProxy("layer_data")
     if (input$heat) {
-      proxy %>% addHeatmap(lng = filtered_data$Longitude,
-                           lat = filtered_data$Latitude,
-                           intensity = 20,
-                           max = 100,
-                           radius = 20,
-                           blur = 20) 
-    }
-    else{
+      proxy %>% addHeatmap(
+        lng = filtered_data$long,
+        lat = filtered_data$lat,
+        intensity = 20,
+        max = 100,
+        radius = 20,
+        blur = 20
+      )
+    } else {
       proxy %>% clearHeatmap()
     }
   })
 
-  
-  # This is the main map where we render leaflet map 
+  # This is the main map where we render leaflet map
   output$layer_data <- renderLeaflet({
-    filtered_data <- bqdata %>%
-      dplyr::filter(
-        if ("All" %in% input$Category) {
-          Category != ""
-        } else {
-          Category %in% input$Category
-        }
-      )
-    
-    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>% 
+    filtered_data <- bqdata
+    leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%
       # Here we have added the support for mapbox and we arre using there tiles to render
       # to render on the map
-      addMapboxTiles(username = "mapbox",
-                     style_id = "streets-v11", 
-                     group = "mapbox") %>%
+      addMapboxTiles(
+        username = "mapbox",
+        style_id = "streets-v11",
+        group = "mapbox"
+      ) %>%
       addResetMapButton() %>%
-      setView(78.9629, 20.5937, zoom = 5) %>% 
+      setView(78.9629, 20.5937, zoom = 5) %>%
       # Support for full control
-      addFullscreenControl(pseudoFullscreen = TRUE, 
-                           position = "bottomright") %>%
-      
+      addFullscreenControl(
+        pseudoFullscreen = TRUE,
+        position = "bottomright"
+      ) %>%
       # This function will keep the zoom in zoom out on the bottom right
       htmlwidgets::onRender("function(el, x) {
         L.control.zoom({ position: 'bottomright' }).addTo(this)
     }") %>%
-      
       # This feature will be to search location with the help of google api
-      leaflet.extras::addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>% 
-      
+      leaflet.extras::addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>%
       # This is to add assembly boundaries and to be able to popup the information
-      leaflet.extras::addGeoJSONChoropleth(json_data, 
-                           valueProperty = "AREASQMI",
-                           scale = c("white", "red"),
-                           mode = "q",
-                           steps = 4,
-                           padding = c(0.2, 0),
-                           labelProperty = "name",
-                           popupProperty = propstoHTMLTable(
-                             props = c("name", "description", "altitudeMode", "extrude"),
-                             table.attrs = list(class = "table table-striped table-bordered"),
-                             drop.na = TRUE
-                           ),
-                           color = "#43a858", weight = 1, fillOpacity = 0.7,
-                           highlightOptions = highlightOptions(
-                             weight = 2, color = "#9c4e57",
-                             fillOpacity = 1, opacity = 1,
-                             bringToFront = TRUE, sendToBack = TRUE),
-                           pathOptions = pathOptions(
-                             showMeasurements = TRUE,
-                             measurementOptions =
-                              measurePathOptions(imperial = TRUE)),
-                 group = "district_boundaries") %>%
-                  hideGroup(group = "district_boundaries") %>%
-                
+      leaflet.extras::addGeoJSONChoropleth(json_data,
+        valueProperty = "AREASQMI",
+        scale = c("white", "red"),
+        mode = "q",
+        steps = 4,
+        padding = c(0.2, 0),
+        labelProperty = "name",
+        popupProperty = propstoHTMLTable(
+          props = c("name", "description", "altitudeMode", "extrude"),
+          table.attrs = list(class = "table table-striped table-bordered"),
+          drop.na = TRUE
+        ),
+        color = "#43a858", weight = 1, fillOpacity = 0.7,
+        highlightOptions = highlightOptions(
+          weight = 2, color = "#9c4e57",
+          fillOpacity = 1, opacity = 1,
+          bringToFront = TRUE, sendToBack = TRUE
+        ),
+        pathOptions = pathOptions(
+          showMeasurements = TRUE,
+          measurementOptions =
+            measurePathOptions(imperial = TRUE)
+        ),
+        group = "district_boundaries"
+      ) %>%
+      hideGroup(group = "district_boundaries") %>%
       # This is to add control layers on the map
       leaflet::addLayersControl(
         position = "bottomleft",
         baseGroups = c("light"),
-        overlayGroups = 
+        overlayGroups =
           c("district_boundaries"),
-        options = layersControlOptions(collapsed=TRUE)
+        options = layersControlOptions(collapsed = TRUE)
       )
   })
 }
