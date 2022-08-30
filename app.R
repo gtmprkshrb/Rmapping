@@ -295,7 +295,7 @@ server <- function(input, output, session) {
         position = "bottomleft",
         baseGroups = c("Light"),
         overlayGroups =
-          c("District Boundaries"),
+          c("district_boundaries"),
         options = layersControlOptions(collapsed = TRUE)
       )
   })
