@@ -50,6 +50,12 @@ con <- dbConnect(
 
 bqdata <- dbGetQuery(con, 'SELECT *, CAST(latitude AS FLOAT8) as lat,CAST(longitude AS FLOAT8) as long  FROM "tabLocations"')
 
+
+# List of distinct state Names
+state <- bqdata %>%
+  dplyr::select(state) %>%
+  distinct()
+
 # Reading all the data for Assembly level boundaries
 json_data <- readr::read_file("AC_Boundary.json")
 
@@ -79,6 +85,14 @@ ui_front <- bootstrapPage(
       circle = TRUE,
       width = 250,
       size = "sm",
+      selectInput(
+        "state", "state Name:",
+        # Appending ALL to have a option to load all locations
+        append("All", as.list(state$state), ),
+        # selecting ALL as default option
+        selected = "All",
+        multiple = TRUE
+      ),
       hr(),
       checkboxInput("heat", "Heatmap", TRUE),
       checkboxInput("cluster", "Clustering", FALSE)
@@ -166,7 +180,13 @@ server <- function(input, output, session) {
   # Otherwise it will remove the marker
   observe({
     filtered_data <- bqdata %>%
-      dplyr::filter()
+      dplyr::filter(
+        if ("All" %in% input$state) {
+          state != ""
+        } else {
+          state %in% input$state
+        }
+      )
 
     proxy <- leafletProxy("layer_data")
     if (input$cluster) {
@@ -194,7 +214,14 @@ server <- function(input, output, session) {
   # If we click on the Heatmap it shows the density of the data points
   # Otherwise it will remove the Heatmap
   observe({
-    filtered_data <- bqdata
+    filtered_data <- bqdata %>%
+      dplyr::filter(
+        if ("All" %in% input$state) {
+          state != ""
+        } else {
+          state %in% input$state
+        }
+      )
     proxy <- leafletProxy("layer_data")
     if (input$heat) {
       proxy %>% addHeatmap(
@@ -212,7 +239,14 @@ server <- function(input, output, session) {
 
   # This is the main map where we render leaflet map
   output$layer_data <- renderLeaflet({
-    filtered_data <- bqdata
+    filtered_data <- bqdata %>%
+      dplyr::filter(
+        if ("All" %in% input$state) {
+          state != ""
+        } else {
+          state %in% input$state
+        }
+      )
     leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%
       # Here we have added the support for mapbox and we arre using there tiles to render
       # to render on the map
