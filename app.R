@@ -85,7 +85,7 @@ ui_front <- bootstrapPage(
       width = 250,
       size = "sm",
       selectInput(
-        "state", "state Name:",
+        "state", "State Name:",
         # Appending ALL to have a option to load all locations
         append("All", as.list(state$state), ),
         # selecting ALL as default option
