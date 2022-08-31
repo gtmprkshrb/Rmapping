@@ -37,7 +37,6 @@ db_user <- Sys.getenv("DB_USER")
 # Database Password
 db_password <- Sys.getenv("DB_PASSWORD")
 
-
 con <- dbConnect(
   RPostgres::Postgres(),
   dbname = db,
@@ -47,21 +46,30 @@ con <- dbConnect(
   password = db_password
 )
 
+check_for_update <- function() {
+  dbGetQuery(con, 'SELECT MAX(creation) FROM "tabLocations"')
+}
+
 location_query <- 'WITH events AS (SELECT title, type, category, status, description, location FROM "tabEvents" WHERE location IS NOT NULL and title IS NOT NULL),
 locations AS (SELECT name, CAST(latitude AS FLOAT8) AS lat, CAST(longitude AS FLOAT8) AS long, address, city, state, district FROM "tabLocations")
 SELECT * FROM events LEFT JOIN locations ON location = name'
-bqdata <- dbGetQuery(con, location_query)
 
-# List of distinct category names
-category <- bqdata %>%
-  dplyr::select(category) %>%
-  distinct()
+frappe_data <- function() {
+  dbGetQuery(con, location_query)
+}
 
 # Reading all the data for Assembly level boundaries from Frappe DB
 assembly_boundaries <- dbGetQuery(con, 'SELECT json FROM "boundaries" where id = 3')
-
 json_data <- assembly_boundaries$json
-# This we are using in the UI and we are using bootstrap logic here along with some CSS
+
+
+# List of distinct category Names
+category <- get_data() %>%
+  dplyr::select(category) %>%
+  distinct()
+
+# This we are using in the UI and we are using bootstrap logic here
+# along with some CSS
 ui_front <- bootstrapPage(
   tags$head(
     tags$meta(
@@ -101,6 +109,7 @@ ui_front <- bootstrapPage(
   )
 )
 
+
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
     icon = "road",
@@ -119,6 +128,7 @@ logos <- awesomeIconList(
 geosearch1 <- basicPage(
   HTML(paste0(" <script>
                 function initAutocomplete() {
+
                 var autocomplete = new google.maps.places.Autocomplete(document.getElementById('address'),{types: ['geocode']});
                 autocomplete.setFields(['address_components', 'formatted_address',  'geometry', 'icon', 'name']);
                 autocomplete.addListener('place_changed', function() {
@@ -126,6 +136,7 @@ geosearch1 <- basicPage(
                 if (!place.geometry) {
                 return;
                 }
+
                 var addressPretty = place.formatted_address;
                 var address = '';
                 if (place.address_components) {
@@ -152,6 +163,7 @@ geosearch1 <- basicPage(
                 <script src='https://maps.googleapis.com/maps/api/js?key=", key, "&libraries=places&callback=initAutocomplete' async defer></script>"))
 )
 
+
 ui <- dashboardPage(
   skin = c("green"),
   dashboardHeader(title = "GeoLocation"),
@@ -165,15 +177,17 @@ ui <- dashboardPage(
   )
 )
 
-server <- function(input, output, session) {
-  # This we need to auto connect the server.
-  session$allowReconnect(TRUE)
 
+server <- function(input, output, session) {
+  bqdata <- reactivePoll(10000, session,
+    checkFunc = check_for_update,
+    valueFunc = frappe_data
+  )
   # Here we are observing the cluster input
   # If we click on the cluster it tries to cluster all the data points
   # Otherwise it will remove the marker
   observe({
-    filtered_data <- bqdata %>%
+    filtered_data <- bqdata() %>%
       dplyr::filter(
         if ("All" %in% input$category) {
           category != ""
@@ -208,7 +222,7 @@ server <- function(input, output, session) {
   # If we click on the Heatmap it shows the density of the data points
   # Otherwise it will remove the Heatmap
   observe({
-    filtered_data <- bqdata %>%
+    filtered_data <- bqdata() %>%
       dplyr::filter(
         if ("All" %in% input$category) {
           category != ""
@@ -231,9 +245,12 @@ server <- function(input, output, session) {
     }
   })
 
+  # This we need to auto connect the server.
+  session$allowReconnect(TRUE)
+
   # This is the main map where we render leaflet map
   output$layer_data <- renderLeaflet({
-    filtered_data <- bqdata %>%
+    filtered_data <- bqdata() %>%
       dplyr::filter(
         if ("All" %in% input$category) {
           category != ""
@@ -241,6 +258,7 @@ server <- function(input, output, session) {
           category %in% input$category
         }
       )
+
     leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%
       # Here we have added the support for mapbox and we are using there tiles to render on the map
       addMapboxTiles(
@@ -285,15 +303,15 @@ server <- function(input, output, session) {
           measurementOptions =
             measurePathOptions(imperial = TRUE)
         ),
-        group = "District boundaries"
+        group = "District Boundaries"
       ) %>%
-      hideGroup(group = "District boundaries") %>%
+      hideGroup(group = "District Boundaries") %>%
       # This is to add control layers on the map
       leaflet::addLayersControl(
         position = "bottomleft",
         baseGroups = c("Light"),
         overlayGroups =
-          c("District boundaries"),
+          c("District Boundaries"),
         options = layersControlOptions(collapsed = TRUE)
       )
   })
