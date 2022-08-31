@@ -47,10 +47,10 @@ con <- dbConnect(
   password = db_password
 )
 
-bqdata <- dbGetQuery(con, 'WITH events AS (SELECT title, type, category, status, description, location FROM "tabEvents" WHERE location IS NOT NULL and title IS NOT NULL),
+location_query <- 'WITH events AS (SELECT title, type, category, status, description, location FROM "tabEvents" WHERE location IS NOT NULL and title IS NOT NULL),
 locations AS (SELECT name, CAST(latitude AS FLOAT8) AS lat, CAST(longitude AS FLOAT8) AS long, address, city, state, district FROM "tabLocations")
-SELECT * FROM events LEFT JOIN locations ON location = name')
-
+SELECT * FROM events LEFT JOIN locations ON location = name'
+bqdata <- dbGetQuery(con, location_query)
 
 # List of distinct category Names
 category <- bqdata %>%
@@ -58,8 +58,9 @@ category <- bqdata %>%
   distinct()
 
 # Reading all the data for Assembly level boundaries
-json_data <- readr::read_file("AC_Boundary.json")
+assembly_boundaries <- dbGetQuery(con, 'SELECT json FROM "boundaries" where id = 3')
 
+json_data <- assembly_boundaries$json
 # This we are using in the UI and we are using bootstrap logic here
 # along with some CSS
 ui_front <- bootstrapPage(
@@ -289,15 +290,15 @@ server <- function(input, output, session) {
           measurementOptions =
             measurePathOptions(imperial = TRUE)
         ),
-        group = "district_boundaries"
+        group = "District boundaries"
       ) %>%
-      hideGroup(group = "district_boundaries") %>%
+      hideGroup(group = "District boundaries") %>%
       # This is to add control layers on the map
       leaflet::addLayersControl(
         position = "bottomleft",
         baseGroups = c("Light"),
         overlayGroups =
-          c("district_boundaries"),
+          c("District boundaries"),
         options = layersControlOptions(collapsed = TRUE)
       )
   })
