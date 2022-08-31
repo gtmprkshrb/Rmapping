@@ -26,15 +26,15 @@ my_token <- Sys.getenv("MAPBOX_TOKEN")
 
 mapboxapi::mb_access_token(my_token, install = TRUE, overwrite = TRUE)
 
-# database name
+# Database Name
 db <- Sys.getenv("DATABASE")
-# database host
+# Database Host
 host_db <- Sys.getenv("DB_HOST")
-# database port no.
+# Database Port No.
 db_port <- Sys.getenv("DB_PORT")
-# database user name
+# Database Username
 db_user <- Sys.getenv("DB_USER")
-# database password
+# Database Password
 db_password <- Sys.getenv("DB_PASSWORD")
 
 
@@ -52,17 +52,16 @@ locations AS (SELECT name, CAST(latitude AS FLOAT8) AS lat, CAST(longitude AS FL
 SELECT * FROM events LEFT JOIN locations ON location = name'
 bqdata <- dbGetQuery(con, location_query)
 
-# List of distinct category Names
+# List of distinct category names
 category <- bqdata %>%
   dplyr::select(category) %>%
   distinct()
 
-# Reading all the data for Assembly level boundaries
+# Reading all the data for Assembly level boundaries from Frappe DB
 assembly_boundaries <- dbGetQuery(con, 'SELECT json FROM "boundaries" where id = 3')
 
 json_data <- assembly_boundaries$json
-# This we are using in the UI and we are using bootstrap logic here
-# along with some CSS
+# This we are using in the UI and we are using bootstrap logic here along with some CSS
 ui_front <- bootstrapPage(
   tags$head(
     tags$meta(
@@ -102,7 +101,6 @@ ui_front <- bootstrapPage(
   )
 )
 
-
 logos <- awesomeIconList(
   "Pothole" = makeAwesomeIcon(
     icon = "road",
@@ -121,7 +119,6 @@ logos <- awesomeIconList(
 geosearch1 <- basicPage(
   HTML(paste0(" <script>
                 function initAutocomplete() {
-
                 var autocomplete = new google.maps.places.Autocomplete(document.getElementById('address'),{types: ['geocode']});
                 autocomplete.setFields(['address_components', 'formatted_address',  'geometry', 'icon', 'name']);
                 autocomplete.addListener('place_changed', function() {
@@ -129,7 +126,6 @@ geosearch1 <- basicPage(
                 if (!place.geometry) {
                 return;
                 }
-
                 var addressPretty = place.formatted_address;
                 var address = '';
                 if (place.address_components) {
@@ -156,7 +152,6 @@ geosearch1 <- basicPage(
                 <script src='https://maps.googleapis.com/maps/api/js?key=", key, "&libraries=places&callback=initAutocomplete' async defer></script>"))
 )
 
-
 ui <- dashboardPage(
   skin = c("green"),
   dashboardHeader(title = "GeoLocation"),
@@ -170,15 +165,12 @@ ui <- dashboardPage(
   )
 )
 
-
 server <- function(input, output, session) {
-
   # This we need to auto connect the server.
   session$allowReconnect(TRUE)
 
-
   # Here we are observing the cluster input
-  # If wr click on the cluster it tries to cluster all the data points
+  # If we click on the cluster it tries to cluster all the data points
   # Otherwise it will remove the marker
   observe({
     filtered_data <- bqdata %>%
@@ -196,6 +188,11 @@ server <- function(input, output, session) {
         lat = filtered_data$lat,
         lng = filtered_data$long,
         popup = paste0(
+          "<b>Title: </b>", filtered_data$title, "<br>",
+          "<b>Type: </b>", filtered_data$type, "<br>",
+          "<b>Category: </b>", filtered_data$category, "<br>",
+          "<b>Status: </b>", filtered_data$status, "<br>",
+          "<b>Description: </b>", filtered_data$description, "<br>",
           "<b>Address: </b>", filtered_data$address, "<br>",
           "<b>City Name: </b>", filtered_data$city, "<br>",
           "<b>State Name: </b>", filtered_data$state, "<br>"
@@ -206,7 +203,6 @@ server <- function(input, output, session) {
       proxy %>% clearMarkerClusters()
     }
   })
-
 
   # Here we are observing the heatmap input
   # If we click on the Heatmap it shows the density of the data points
@@ -246,8 +242,7 @@ server <- function(input, output, session) {
         }
       )
     leaflet(filtered_data, options = leafletOptions(zoomControl = FALSE)) %>%
-      # Here we have added the support for mapbox and we arre using there tiles to render
-      # to render on the map
+      # Here we have added the support for mapbox and we are using there tiles to render on the map
       addMapboxTiles(
         username = "mapbox",
         style_id = "streets-v11",
@@ -264,7 +259,7 @@ server <- function(input, output, session) {
       htmlwidgets::onRender("function(el, x) {
         L.control.zoom({ position: 'bottomright' }).addTo(this)
     }") %>%
-      # This feature will be to search location with the help of google api
+      # This feature will be to search location with the help of Google API
       leaflet.extras::addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>%
       # This is to add assembly boundaries and to be able to popup the information
       leaflet.extras::addGeoJSONChoropleth(json_data,
