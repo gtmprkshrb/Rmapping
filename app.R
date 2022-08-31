@@ -64,7 +64,7 @@ json_data <- assembly_boundaries$json
 
 
 # List of distinct category Names
-category <- get_data() %>%
+category <- frappe_data() %>%
   dplyr::select(category) %>%
   distinct()
 
