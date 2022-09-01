@@ -201,7 +201,6 @@ server <- function(input, output, session) {
     if (input$cluster) {
       proxy %>% addAwesomeMarkers(
         lat = filtered_data$lat,
-        icon = logos,
         lng = filtered_data$long,
         popup = paste0(
           "<b>Title: </b>", filtered_data$title, "<br>",
