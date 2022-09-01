@@ -103,8 +103,9 @@ ui_front <- bootstrapPage(
         multiple = TRUE
       ),
       hr(),
-      checkboxInput("heat", "Heatmap", TRUE),
-      checkboxInput("cluster", "Clustering", TRUE)
+      checkboxInput("heat", "Heatmap", FALSE),
+      checkboxInput("cluster", "Clustering", TRUE),
+      checkboxInput("district", "District Boundaries", FALSE)
     )
   )
 )
@@ -184,6 +185,39 @@ server <- function(input, output, session) {
     checkFunc = check_for_update,
     valueFunc = frappe_data
   )
+
+  observe({
+    proxy <- leafletProxy("layer_data")
+
+    if (input$district) {
+      proxy %>% leaflet.extras::addGeoJSONChoropleth(json_data,
+        valueProperty = "AREASQMI",
+        scale = c("white", "red"),
+        mode = "q",
+        steps = 4,
+        padding = c(0.2, 0),
+        labelProperty = "name",
+        popupProperty = propstoHTMLTable(
+          props = c("name", "description", "altitudeMode", "extrude"),
+          table.attrs = list(class = "table table-striped table-bordered"),
+          drop.na = TRUE
+        ),
+        color = "#43a858", weight = 1, fillOpacity = 0.7,
+        highlightOptions = highlightOptions(
+          weight = 2, color = "#9c4e57",
+          fillOpacity = 1, opacity = 1,
+          bringToFront = TRUE, sendToBack = TRUE
+        ),
+        pathOptions = pathOptions(
+          showMeasurements = TRUE,
+          measurementOptions =
+            measurePathOptions(imperial = TRUE)
+        )
+      )
+    } else {
+      proxy %>% clearGeoJSON()
+    }
+  })
   # Here we are observing the cluster input
   # If we click on the cluster it tries to cluster all the data points
   # Otherwise it will remove the marker
@@ -281,38 +315,11 @@ server <- function(input, output, session) {
       # This feature will be to search location with the help of Google API
       leaflet.extras::addSearchGoogle(searchOptions(autoCollapse = FALSE, minLength = 8)) %>%
       # This is to add assembly boundaries and to be able to popup the information
-      leaflet.extras::addGeoJSONChoropleth(json_data,
-        valueProperty = "AREASQMI",
-        scale = c("white", "red"),
-        mode = "q",
-        steps = 4,
-        padding = c(0.2, 0),
-        labelProperty = "name",
-        popupProperty = propstoHTMLTable(
-          props = c("name", "description", "altitudeMode", "extrude"),
-          table.attrs = list(class = "table table-striped table-bordered"),
-          drop.na = TRUE
-        ),
-        color = "#43a858", weight = 1, fillOpacity = 0.7,
-        highlightOptions = highlightOptions(
-          weight = 2, color = "#9c4e57",
-          fillOpacity = 1, opacity = 1,
-          bringToFront = TRUE, sendToBack = TRUE
-        ),
-        pathOptions = pathOptions(
-          showMeasurements = TRUE,
-          measurementOptions =
-            measurePathOptions(imperial = TRUE)
-        ),
-        group = "District Boundaries"
-      ) %>%
-      hideGroup(group = "District Boundaries") %>%
+
       # This is to add control layers on the map
       leaflet::addLayersControl(
         position = "bottomleft",
         baseGroups = c("Light"),
-        overlayGroups =
-          c("District Boundaries"),
         options = layersControlOptions(collapsed = TRUE)
       )
   })
