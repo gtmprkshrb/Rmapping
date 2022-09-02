@@ -1,6 +1,21 @@
-# Mapping in R
+# Visualize the data using R and Leaflet
 
-This repository contains the sample codes from our learning so far with R leaflet and mapping.
+This project is to showcase the potential of R and Leaflet to show the users how can we visualize the data
+using Maps. Features which we have worked on is 
+
+1. Clustering
+![](images/Clustering.png)
+
+2. Heatmap
+![](images/Heatmap.png)
+
+3. GeoJson Boundaries
+![](images/GeoBoundaries.png)
+
+4. Integration with Google Search
+5. Integration with Mapbox
+6. Filters
+7. Shiny UI
 
 ## Installation Steps
 
