@@ -4,24 +4,34 @@ This project is to showcase the potential of R and Leaflet to show the users how
 using Maps. Features which we have worked on is 
 
 1. Clustering
+
 ![](images/Clustering.png)
 
 2. Heatmap
+
 ![](images/Heatmap.png)
 
 3. GeoJson Boundaries
+
 ![](images/GeoBoundaries.png)
 
 4. Integration with Google Search
-5. Integration with Mapbox
-6. Filters
-7. Shiny UI
+
+![](images/GoogleSearch.png)
+
+5. Filters
+
+![](images/Filtering.png)
+
+## Glific Blogs
+
+- Visualizing citizen engagement of chatboat (https://glific.org/visualizing-citizen-engagement-of-chatbot/)
+- R mapping and Leaflet (https://glific.org/r-mapping-and-leaflet/)
 
 ## Installation Steps
 
 - Install [R](https://cran.r-project.org)
 - Install [Rstudio](https://www.rstudio.com/products/rstudio/download)
-
 
 ## Online resources 
 
