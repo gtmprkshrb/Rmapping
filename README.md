@@ -53,3 +53,6 @@ using Maps. Features which we have worked on is
 - Brief Overview of [R shiny](https://www.youtube.com/watch?v=6o7jNUXUONY) good to see what the full-scale map would look like. In this video, it will show the map view of earthquakes based on their magnitude and location
 - [Getting started with R and RStudio:](https://www.youtube.com/watch?v=lVKMsaWju8w) good to get familiar with terminal and console
 
+
+##FAQs
+ - If you are a OS X user on R 4.2, you might have issues with installing leaflet > https://github.com/rspatial/terra manual install via homebrew will help
